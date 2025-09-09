@@ -219,7 +219,7 @@ for genome_name in genome_path_list:
     genome_selected_PFAM = genome_selected_PFAM.drop(labels= "nan", axis= 1, errors = "ignore")
 
     # Now just rename the column with pfam_list_dict, which has this structure: "PFAM number" : "pfam number : description"
-    genome_selected_PFAM = genome_selected_PFAM.rename(mapper=pfam_list_dict, axis=1)
+    #genome_selected_PFAM = genome_selected_PFAM.rename(mapper=pfam_list_dict, axis=1)
 
     #For some reason I am getting a column "P" in some genomes, and I cant figure out why, so I am removing it here
     col_temp_pfam = genome_selected_PFAM.columns.tolist()
@@ -240,8 +240,17 @@ for genome_name in genome_path_list:
     genome_selected_PFAM_all = genome_selected_PFAM_all.drop(["A", "CAZymes", "KO", "MEROPS", "prokka_features", "PFAM"], axis=1, errors="ignore")
     genome_selected_PFAM_all_T = genome_selected_PFAM_all.T #Transposing now
     genome_selected_PFAM_all_T = genome_selected_PFAM_all_T.reset_index() #Fixing Index after transposing
-    genome_selected_PFAM_all_T = genome_selected_PFAM_all_T.rename(columns = {"index": "a_genome_prokka_feats"}) #Still fixing Index,
-    # leaving the name with an a before so that the sorting of the table in the end is simpler
+    genome_selected_PFAM_all_T = genome_selected_PFAM_all_T.rename(columns = {"index": "a_genome_prokka_feats"}) #Still
+    # fixing Index, leaving the name with an a before so that the sorting of the table in the end is simpler
+
+    genome_selected_PFAM_all_T = genome_selected_PFAM_all_T.set_index("a_genome_prokka_feats") #Finally index is "a_a_genome_prokka_feats"
+
+    #changing row names of dna and aa sequence for the sorting at the end of the script places columns as intended
+    genome_selected_PFAM_all_T = genome_selected_PFAM_all_T.rename(mapper={"dna_sequence": "Dna_sequence",
+                                                                            "aa_sequence": "Eaa_sequence"}, axis= 0)
+
+    print(genome_selected_PFAM_all_T.index)
+
 
     #Start merging them all iteratively into the same table
     if merged_df.empty:
@@ -249,10 +258,8 @@ for genome_name in genome_path_list:
     else:
         merged_df = merged_df.merge(genome_selected_PFAM_all_T, on="a_genome_prokka_feats", how="outer")
 
-
-
     genome_selected_PFAM_all_T.to_csv("Outputs/Transposed/" + genome_name.replace("_all_features.csv",
-                                                                        "_PFAM_list_transposed.csv"), index=False)
+                                                                        "_PFAM_list_transposed.csv"), index=True)
     counter = counter + 1
     counter_percent = (counter/len(genome_path_list))*100
     counter_percent = round(counter_percent, 2)
@@ -261,10 +268,13 @@ for genome_name in genome_path_list:
     print(counter_announcement)
 
 
-#Treat the final PFAM table
+#sort the final PFAM table
 merged_df = merged_df.sort_values(by="a_genome_prokka_feats", ascending=True)
 merged_df_untransposed = merged_df.copy().T.reset_index()
 
+#make the now column names make sense again
+merged_df_untransposed = merged_df_untransposed.rename(columns={"Dna_sequence": "dna_sequence",
+                                                                        "Eaa_sequence": "aa_sequence"})
 
 
 #Export general tables
