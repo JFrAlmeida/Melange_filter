@@ -249,9 +249,6 @@ for genome_name in genome_path_list:
     genome_selected_PFAM_all_T = genome_selected_PFAM_all_T.rename(mapper={"dna_sequence": "Dna_sequence",
                                                                             "aa_sequence": "Eaa_sequence"}, axis= 0)
 
-    print(genome_selected_PFAM_all_T.index)
-
-
     #Start merging them all iteratively into the same table
     if merged_df.empty:
         merged_df = genome_selected_PFAM_all_T
@@ -268,15 +265,23 @@ for genome_name in genome_path_list:
     print(counter_announcement)
 
 
-#sort the final PFAM table
+#sort the final PFAM table, and handle index
 merged_df = merged_df.sort_values(by="a_genome_prokka_feats", ascending=True)
 merged_df_untransposed = merged_df.copy().T.reset_index()
 
 #make the now column names make sense again
 merged_df_untransposed = merged_df_untransposed.rename(columns={"Dna_sequence": "dna_sequence",
-                                                                        "Eaa_sequence": "aa_sequence"})
+                                                                "Eaa_sequence": "aa_sequence"})
+#and set an index
+merged_df_untransposed = merged_df_untransposed.set_index("genome_prokka_feats").fillna(value= 0)
+
+#Now add summary statistics to it
+merged_df_untransposed.loc["Total sum of each PFAM"] = merged_df_untransposed.sum(
+    numeric_only= True, axis= 0) #col totals
+merged_df_untransposed.loc[: , "Total PFAMs per COG"] = merged_df_untransposed.iloc[:, 3:].sum(
+    numeric_only= True, axis= 1) #row totals
 
 
 #Export general tables
 grouped_features_table.to_csv("Outputs/All_Genomes_grouped_features.csv", index=False)
-merged_df_untransposed.to_csv("Outputs/PFAM_grouped_table.csv", na_rep= "0", index=False, )
+merged_df_untransposed.to_csv("Outputs/PFAM_grouped_table.csv", index=True)
