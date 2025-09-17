@@ -3,7 +3,8 @@ import itertools as itool
 import pandas as pd
 import re
 from Bio import SeqIO
-
+import time
+from warnings import simplefilter
 #This Script takes in the Melange annotation (https://sandragodinhosilva.github.io/melange/) of any number of genomes,
 # selects only specific COGs, adds to it the dna and amino acid sequences corresponding to those COGs, and produces two tables,
 # one with only metadata and the sequences, another with PFAM counts for statistics
@@ -22,9 +23,10 @@ from Bio import SeqIO
 
 
 # default path to ORFS, if you want to change it go ahead:
-ORFs_path = os.path.normpath("Annotation_results/Orfs_per_genome_dummy/") #Remove the Dummy part at the end
+# ORFs_path = os.path.normpath("Annotation_results/Orfs_per_genome_dummy/") #Remove the Dummy part at the end
+time_start = time.time()
 
-# ORFs_path = os.path.normpath("Annotation_results/Orfs_per_genome/")
+ORFs_path = os.path.normpath("Annotation_results/Orfs_per_genome/")
 
 
 #Get COGs related to chitin
@@ -115,6 +117,11 @@ merged_df = pd.DataFrame()
 #Counter for genome progress management
 counter = 0
 counter_percent = 0
+
+
+#Ignoring performance warning from Pandas, which does not appear do be relevant, but spit out anyways past some loops
+simplefilter(action="ignore", category=pd.errors.PerformanceWarning)
+
 
 
 #Open genome and build the metainfo-table
@@ -264,7 +271,6 @@ for genome_name in genome_path_list:
                             " (" + str(counter_percent) + "%)")
     print(counter_announcement)
 
-
 #sort the final PFAM table, and handle index
 merged_df = merged_df.sort_values(by="a_genome_prokka_feats", ascending=True)
 merged_df_untransposed = merged_df.copy().T.reset_index()
@@ -285,3 +291,8 @@ merged_df_untransposed.loc[: , "Total PFAMs per COG"] = merged_df_untransposed.i
 #Export general tables
 grouped_features_table.to_csv("Outputs/All_Genomes_grouped_features.csv", index=False)
 merged_df_untransposed.to_csv("Outputs/PFAM_grouped_table.csv", index=True)
+
+
+time_finished = time.time()
+
+print("This program took ", (time_finished - time_start), " seconds to run")
