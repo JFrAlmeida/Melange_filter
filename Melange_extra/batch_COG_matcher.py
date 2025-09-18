@@ -21,12 +21,12 @@ from warnings import simplefilter
 
 #############################################
 
-
-# default path to ORFS, if you want to change it go ahead:
-# ORFs_path = os.path.normpath("Annotation_results/Orfs_per_genome_dummy/") #Remove the Dummy part at the end
 time_start = time.time()
 
-ORFs_path = os.path.normpath("Annotation_results/Orfs_per_genome/")
+
+# default path to ORFS, if you want to change it go ahead:
+ORFs_path = os.path.normpath("Annotation_results/Orfs_per_genome_dummy/") #Remove the Dummy part at the end
+# ORFs_path = os.path.normpath("Annotation_results/Orfs_per_genome/")
 
 
 #Get COGs related to chitin
@@ -59,6 +59,11 @@ if not os.path.exists("Outputs/Genomes_with_PFAM_list"):
 
 if not os.path.exists("Outputs/Transposed"):
     os.makedirs("Outputs/Transposed")
+
+if not os.path.exists("Outputs/Selected"):
+    os.makedirs("Outputs/Selected")
+
+
 
 #Location of the fna and aa files
 aa_fna_location = "Annotation/"
@@ -293,6 +298,64 @@ grouped_features_table.to_csv("Outputs/All_Genomes_grouped_features.csv", index=
 merged_df_untransposed.to_csv("Outputs/PFAM_grouped_table.csv", index=True)
 
 
+#Select specific COGS!!!! and get the dnas and everything
+isolate_COGS = merged_df_untransposed.copy().drop(["Total PFAMs per COG"], axis=1).drop(
+    ["Total sum of each PFAM"], axis=0)
+
+#slice isolate_COGS so it contains only specific COGs and separate these
+COGS_GH18_endochitinases_df = isolate_COGS.loc[
+    isolate_COGS["COG"].isin(COGS_GH18_endochitinases)
+    ]
+
+COGS_GH19_endochitinases_df = isolate_COGS.loc[
+    isolate_COGS["COG"].isin(COGS_GH19_endochitinases)
+    ]
+
+COGS_exochi_df = isolate_COGS.loc[
+    isolate_COGS["COG"].isin(COGS_exochi)
+    ]
+
+COGS_LPMO_df = isolate_COGS.loc[
+    isolate_COGS["COG"].isin(COGS_LPMO)
+    ]
+
+COGS_deacet_df = isolate_COGS.loc[
+    isolate_COGS["COG"].isin(COGS_deacet)
+    ]
+
+#make list of columns that add to more than 0, and so have more than 1 PFAM
+COGS_GH18_endochitinases_list = COGS_GH18_endochitinases_df.loc[
+    COGS_GH18_endochitinases_df[] > 0
+].columns.tolist()
+
+
+
+
+
+
+COGS_GH18_endochitinases_df.sum(numeric_only= True, axis= 0) #col totals
+
+print(COGS_GH18_endochitinases_list)
+
+# COGS_GH19_endochitinases_list
+# COGS_exochi_list
+# COGS_LPMO_list
+# COGS_deacet_list
+
+
+COGS_GH18_endochitinases_df.to_csv("Outputs/Selected/COGS_GH18_endochitinases.csv", index=True)
+COGS_GH19_endochitinases_df.to_csv("Outputs/Selected/COGS_GH19_endochitinases.csv", index=True)
+COGS_exochi_df.to_csv("Outputs/Selected/COGS_exochi.csv", index=True)
+COGS_LPMO_df.to_csv("Outputs/Selected/COGS_LPMO.csv", index=True)
+COGS_deacet_df.to_csv("Outputs/Selected/COGS_deacet.csv", index=True)
+
+
+#Path for cogs selected Outputs/Selected
+
+
+
+
+#Runtime calculation
 time_finished = time.time()
 
 print("This program took ", (time_finished - time_start), " seconds to run")
