@@ -358,4 +358,4 @@ COGS_deacet_df.to_csv("Outputs/Selected/COGS_deacet.csv", index=True)
 #Runtime calculation
 time_finished = time.time()
 
-print("This program took ", (time_finished - time_start), " seconds to run")
+print(os.path.basename(__file__), " took ", (time_finished - time_start), " seconds to run")
