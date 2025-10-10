@@ -139,14 +139,20 @@ else:
     no_cogs_found_list = no_cogs_found_list + COGS_deacet
 
 #Cogs found announcement
-if len(cogs_found_list) > 0:
+if len(cogs_found_list) > 0 and len(no_cogs_found_list) > 0:
     print("The following cogs had sequences in your dataset :", cogs_found_list)
 
 #No cogs found announcement
 if len(no_cogs_found_list) > 0:
     print("No genes were found for the the following cogs :", no_cogs_found_list)
+
+#All cogs were found in your dataset
+if len(cogs_found_list) > 0 and len(no_cogs_found_list) == 0:
+    print("All the cogs existed in your dataset")
     
 #Runtime calculation
 time_finished = time.time()
 
 print(os.path.basename(__file__), " took ", (time_finished - time_start), " seconds to run")
+
+print("Thank you for using this script - João Fragoso de Almeida")
