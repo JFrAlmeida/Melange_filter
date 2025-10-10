@@ -45,8 +45,6 @@ COGS_deacet = ["COG3394", "COG0726", "COG2861"]
 #Join all of them, make sure there are not duplicates
 COGS_intermediate = COGS_endochi + COGS_exochi + COGS_LPMO + COGS_deacet
 all_COGs = list(set(COGS_intermediate))
-print("Intermediate: ",COGS_intermediate)
-print("all: ",all_COGs)
 
 #location of Outputs and related tables, if it doesnt exist, make it
 if not os.path.exists("Outputs"):

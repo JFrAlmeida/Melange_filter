@@ -1,29 +1,22 @@
 import os
-import itertools as itool
 import pandas as pd
-import re
-from Bio import SeqIO
 import time
-from warnings import simplefilter
 
-
+#Import variables from config now:
+from config import cat_1, cat_2, cat_3, cat_4, cat_5
+from config import cat_1_name, cat_2_name, cat_3_name, cat_4_name, cat_5_name
 
 time_start = time.time()
 
 
-# COG categories
-COGS_GH18_endochitinases = ["COG3325", "COG3469"]
-
-COGS_GH19_endochitinases = ["COG3179"]
-
-COGS_exochi = ["COG4724", "COG3525", "COG3979"]
-
-COGS_LPMO = ["COG3397"]
-
-COGS_deacet = ["COG3394", "COG0726", "COG2861"]
 
 #Paths storage
 path_Pfam_table = "Outputs/PFAM_grouped_table.csv"
+path_to_outputs = "Outputs/Fasta_files/"
+
+#open lists for announcements
+no_cogs_found_list = [] #to store cogs with no enzymes found for an announcement at the end
+cogs_found_list = [] #which cogs had results
 
 #Check if output folder exists, if not make one
 if not os.path.exists("Outputs/Fasta_files"):
@@ -42,16 +35,7 @@ del names_selected[1] #eliminates aa sequence column  from the list
 pfam_table = pfam_table.drop(names_selected, axis=1)
 
 #Cut down dataframe by COG category and cut it down into name, sequence;
-GH18_endochitinases_df = pfam_table.loc[pfam_table["COG"].isin(COGS_GH18_endochitinases),:].copy()
-GH19_endochitinases_df = pfam_table.loc[pfam_table["COG"].isin(COGS_GH19_endochitinases),:].copy()
-COGS_exochi_df = pfam_table.loc[pfam_table["COG"].isin(COGS_exochi),:].copy()
-COGS_LPMO_df = pfam_table.loc[pfam_table["COG"].isin(COGS_LPMO),:].copy()
-COGS_deacet_df = pfam_table.loc[pfam_table["COG"].isin(COGS_deacet),:].copy()
-
-#lists for announcements to be changed below!
-no_cogs_found_list = [] #to store cogs with no enzymes found for an announcement at the end
-cogs_found_list = [] #which cogs had results
-#print me some fastas now boy!
+GH18_endochitinases_df = pfam_table.loc[pfam_table["COG"].isin(cat_1),:].copy()
 
 #GH18_endochitinases
 if len(GH18_endochitinases_df.index) > 0: # seq_list is ready to be exported into fasta
@@ -60,9 +44,10 @@ if len(GH18_endochitinases_df.index) > 0: # seq_list is ready to be exported int
     seq_list = [">" + name + "\n" + seq + "\n" for name, seq in zip(Gh18_name_list, Gh18_sequence_list)]
 
     # write the fasta file with each item from short_seq_list
+    path_cat_1_output = path_to_outputs + cat_1_name + ".fasta"
     with open("Outputs/Fasta_files/GH18_endochitinases.fasta", "w") as file:
         for item in seq_list:
-            file.write(item)  # Add a newline after each item
+            file.write(item)  #writes the fasta
 
     #empty out seq_list
     seq_list.clear()
@@ -70,6 +55,36 @@ if len(GH18_endochitinases_df.index) > 0: # seq_list is ready to be exported int
 
 else:
     no_cogs_found_list = no_cogs_found_list + COGS_GH18_endochitinases
+
+
+
+
+
+
+
+
+
+
+
+
+GH19_endochitinases_df = pfam_table.loc[pfam_table["COG"].isin(COGS_GH19_endochitinases),:].copy()
+COGS_exochi_df = pfam_table.loc[pfam_table["COG"].isin(COGS_exochi),:].copy()
+COGS_LPMO_df = pfam_table.loc[pfam_table["COG"].isin(COGS_LPMO),:].copy()
+COGS_deacet_df = pfam_table.loc[pfam_table["COG"].isin(COGS_deacet),:].copy()
+
+
+#print me some fastas now boy!
+
+
+
+
+
+
+
+
+
+
+
 
 #GH19_endochitinases
 if len(GH19_endochitinases_df.index) > 0: # seq_list is ready to be exported into fasta
