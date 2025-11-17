@@ -1,7 +1,7 @@
 import os
 import time
-
 import pandas as pd
+
 # Import variables from config now:
 from config import cat_1, cat_2, cat_3, cat_4, cat_5, cat_6, cat_7, cat_8, cat_9, cat_10
 from config import cat_1_name, cat_2_name, cat_3_name, cat_4_name, cat_5_name, cat_6_name, cat_7_name, cat_8_name, \
@@ -327,7 +327,6 @@ if not cat_9 == [""]: #Make sure this shit actually works, but cmon shouldnt be 
 cat_10_df = pfam_table.loc[pfam_table["COG"].isin(cat_10),:].copy()
 
 if not cat_10 == [""]: #Make sure this shit actually works, but cmon shouldnt be thaat hard no?
-    print("Why working?")
     if len(cat_10_df.index) > 0: # seq_list is ready to be exported into fasta
         cat_10_list_of_name = cat_10_df["genome_prokka_feats"].to_list()
         cat_10_list_of_sequence = cat_10_df["aa_sequence"].to_list()
@@ -367,6 +366,8 @@ if len(no_cogs_found_list) > 0:
 if len(cogs_found_list) > 0 and len(no_cogs_found_list) == 0:
     print("All the cogs existed in your dataset")
 
+#nice goodbye message
+print("Thank you for using my scripts, hope it helped (｡◕‿◕｡) -- JFA")
 
 #Runtime calculation
 time_finished = time.time()

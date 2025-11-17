@@ -6,6 +6,7 @@ from Bio import SeqIO
 import time
 from warnings import simplefilter
 from config import all_cats
+import shutil
 
 #This Script takes in the Melange annotation (https://sandragodinhosilva.github.io/melange/) of any number of genomes,
 # selects only specific COGs, adds to it the dna and amino acid sequences corresponding to those COGs, and produces two tables,
@@ -25,10 +26,24 @@ from config import all_cats
 
 time_start = time.time()
 
+#### Put functions here ####
+
+def increment_counter ():
+    global counter
+    global counter_percent
+    counter = counter + 1
+    counter_percent = (counter / len(genome_path_list)) * 100
+    counter_percent = round(counter_percent, 2)
+
+
+
+
+
+####  #####
 
 # default path to ORFS, if you want to change it go ahead:
-# ORFs_path = os.path.normpath("Annotation_results/Orfs_per_genome_dummy/") #Remove the Dummy part at the end
-ORFs_path = os.path.normpath("Annotation_results/Orfs_per_genome/")
+ORFs_path = os.path.normpath("Annotation_results/Orfs_per_genome_dummy/") #Remove the Dummy part at the end
+# ORFs_path = os.path.normpath("Annotation_results/Orfs_per_genome/")
 
 
 #Get COGs from config file, and eliminate duplicates
@@ -47,26 +62,36 @@ for element in all_COGs:
             print("One of your categories is composed only of numbers, please correct it and try again!")
             quit()
         else:
-            print("Something strange is wrong with your categories, please verify them and try again!")
+            print("Something strange is going on with your categories, please verify them and try again!")
             quit()
 
 #location of Outputs and related tables, if it doesnt exist, make it
 if not os.path.exists("Outputs"):
     os.makedirs("Outputs")
 
-if not os.path.exists("Outputs/All_Features_per_Genome"):
+if os.path.exists("Outputs/All_Features_per_Genome"): #cleans up folder if it has a bunch of trash in it, same for the rest
+    shutil.rmtree("Outputs/All_Features_per_Genome")
+    os.makedirs("Outputs/All_Features_per_Genome")
+else:
     os.makedirs("Outputs/All_Features_per_Genome")
 
-if not os.path.exists("Outputs/Genomes_with_PFAM_list"):
+if os.path.exists("Outputs/Genomes_with_PFAM_list"):
+    shutil.rmtree("Outputs/Genomes_with_PFAM_list")
+    os.makedirs("Outputs/Genomes_with_PFAM_list")
+else:
     os.makedirs("Outputs/Genomes_with_PFAM_list")
 
-if not os.path.exists("Outputs/Transposed"):
+if os.path.exists("Outputs/Transposed"):
+    shutil.rmtree("Outputs/Transposed")
+    os.makedirs("Outputs/Transposed")
+else:
     os.makedirs("Outputs/Transposed")
 
-if not os.path.exists("Outputs/Selected"):
-    os.makedirs("Outputs/Selected")
-
-
+if os.path.exists("Outputs/Fasta_files"):
+    shutil.rmtree("Outputs/Fasta_files")
+    os.makedirs("Outputs/Fasta_files")
+else:
+    os.makedirs("Outputs/Fasta_files")
 
 #Location of the fna and aa files
 aa_fna_location = "Annotation/"
@@ -170,7 +195,11 @@ for genome_name in genome_path_list:
     genome_selected = genome_selected.reset_index()
 
     #In case a dataframe is empty after the mask is applied, this skips the rest of the iteration
-    if genome_selected.index.tolist() == []:
+    if genome_selected.index.tolist() == []: #does this actuall do something?????
+        increment_counter()
+        counter_announcement = ("Finished genome " + str(counter) + " of " + str(len(genome_path_list)) +
+                                " (" + str(counter_percent) + "%) -> " + genome_name + " did not have any of the required cogs")
+        print(counter_announcement)
         continue
 
 
@@ -272,9 +301,7 @@ for genome_name in genome_path_list:
 
     genome_selected_PFAM_all_T.to_csv("Outputs/Transposed/" + genome_name.replace("_all_features.csv",
                                                                         "_PFAM_list_transposed.csv"), index=True)
-    counter = counter + 1
-    counter_percent = (counter/len(genome_path_list))*100
-    counter_percent = round(counter_percent, 2)
+    increment_counter()
     counter_announcement = ("Finished genome " + str(counter) + " of " + str(len(genome_path_list)) +
                             " (" + str(counter_percent) + "%)")
     print(counter_announcement)
@@ -300,7 +327,8 @@ merged_df_untransposed.loc[: , "Total PFAMs per COG"] = merged_df_untransposed.i
 grouped_features_table.to_csv("Outputs/All_Genomes_grouped_features.csv", index=False)
 merged_df_untransposed.to_csv("Outputs/PFAM_grouped_table.csv", index=True)
 
-
+#nice goodbye message
+print("Thank you for using my scripts, hope it helped (｡◕‿◕｡) -- JFA")
 
 #Runtime calculation
 time_finished = time.time()
