@@ -5,8 +5,10 @@ import re
 from Bio import SeqIO
 import time
 from warnings import simplefilter
-from config import all_cats
 import shutil
+
+from config import all_cogs
+from config import annotation_column_target
 
 #This Script takes in the Melange annotation (https://sandragodinhosilva.github.io/melange/) of any number of genomes,
 # selects only specific COGs, adds to it the dna and amino acid sequences corresponding to those COGs, and produces two tables,
@@ -35,35 +37,21 @@ def increment_counter ():
     counter_percent = (counter / len(genome_path_list)) * 100
     counter_percent = round(counter_percent, 2)
 
+#Function to extract sequences from FASTA files
+def extract_sequences(fasta_file, seqs):
+    seq_dict = {record.id: str(record.seq) for record in SeqIO.parse(fasta_file, "fasta")}
+    return [seq_dict.get(seq_id) for seq_id in seqs]  # Return sequence if ID exists
 
-
-
+#looks into a pandas df to find a column with the second parameter as name; prints "ITS HERE" if found
+def find_my_p_column(pandas_df, colname):
+    if colname in list(pandas_df.columns.values):
+        print(f"I found a col named {colname}!!!")
 
 ####  #####
 
 # default path to ORFS, if you want to change it go ahead:
 ORFs_path = os.path.normpath("Annotation_results/Orfs_per_genome_dummy/") #Remove the Dummy part at the end
 # ORFs_path = os.path.normpath("Annotation_results/Orfs_per_genome/")
-
-
-#Get COGs from config file, and eliminate duplicates
-all_COGs = list(set(all_cats))
-for element in all_COGs:
-    if not re.match(r"^COG\d+$", element):
-        if element == "":
-            print('One or more of your categories has the characters "" instead of a COG number, please eliminate'
-                  ' them/correct it and run again!')
-            quit()
-        if element == "COG":
-            print("One or more of your categories is missing the number after the COG letters, please correct it and"
-                  " try again!")
-            quit()
-        if re.match(r"^\d+$", element):
-            print("One of your categories is composed only of numbers, please correct it and try again!")
-            quit()
-        else:
-            print("Something strange is going on with your categories, please verify them and try again!")
-            quit()
 
 #location of Outputs and related tables, if it doesnt exist, make it
 if not os.path.exists("Outputs"):
@@ -96,10 +84,7 @@ else:
 #Location of the fna and aa files
 aa_fna_location = "Annotation/"
 
-#Function to extract sequences from FASTA files
-def extract_sequences(fasta_file, ids):
-    seq_dict = {record.id: str(record.seq) for record in SeqIO.parse(fasta_file, "fasta")}
-    return [seq_dict.get(seq_id) for seq_id in ids]  # Return sequence if ID exists
+
 
 ### Generate a description of the PFAM universe specific to each genome set
 
@@ -175,19 +160,26 @@ for genome_name in genome_path_list:
     #Now ready to start building the table
     genome = pd.read_csv(genome_path)
 
+    # Some genomes have a "P" column that is empty, and seems to do nothing, elminitating it here
+    if "P" in list(genome.columns.values):
+        genome = genome.drop(columns = "P")
+
     #Make a mask stating yes where a COG is in our list, and false when it isnt, use it to select lines of interest
     # create the empty bool series first
     filter_bool = pd.Series(dtype=bool)
 
     # This loop makes a filter_bool boolean series that adds a true for only those lines containing any of the COGs listed above
-    for item in all_COGs:
-        finder = genome["COG"].str.contains(item, case=False, regex=True, na=False)
+    for item in all_cogs:
+        finder = genome[annotation_column_target].str.contains(item, case=False, regex=True, na=False)
 
-        # This allows the attribution of the first entry, then addition of the next ones to the same thing
+        # this if - else allows to grow filter_bool by adding entries that have each item in all_cogs as true to the
+        # filter boolean
         if filter_bool.size == 0:
             filter_bool = finder
+            print(f"first filter is {sum(filter_bool)}")
         else:
             filter_bool = (filter_bool + finder)
+            print(f"next filter is {sum(filter_bool)}")
 
     #This is when the mask is used to select the COGs, behaves similarly to match in R (I think)
     genome_selected = genome.loc[filter_bool]
@@ -195,7 +187,7 @@ for genome_name in genome_path_list:
     genome_selected = genome_selected.reset_index()
 
     #In case a dataframe is empty after the mask is applied, this skips the rest of the iteration
-    if genome_selected.index.tolist() == []: #does this actuall do something?????
+    if genome_selected.index.tolist() == []:
         increment_counter()
         counter_announcement = ("Finished genome " + str(counter) + " of " + str(len(genome_path_list)) +
                                 " (" + str(counter_percent) + "%) -> " + genome_name + " did not have any of the required cogs")
@@ -207,6 +199,7 @@ for genome_name in genome_path_list:
     #unfucking the genome name
     cond = r"GCA_\d+\.\d+_(.*?)_all_features\.csv"
     simpler_genome_name = re.search(cond, genome_name).group(1) #leaves the genome name plus strain ID
+    print(simpler_genome_name)
 
     #Make col with the unique name per genome per prokka feature
     genome_selected["genome_prokka_feats"] = simpler_genome_name + "_" + genome_selected["prokka_features"]
@@ -237,8 +230,7 @@ for genome_name in genome_path_list:
         grouped_features_table = pd.concat([grouped_features_table, genome_selected], ignore_index=True, )
 
     #PFAM table generation
-    #At this point genome_selected was already outputed and joined to the grouped table, and is free to me modified
-    # further by the PFAM table code below
+    #The .copy() means I finally learned how python actually uses pointers :)
     genome_selected_PFAM = genome_selected.copy()
     genome_selected_PFAM["PFAM"] = genome_selected_PFAM["PFAM"].astype(str).str.replace(r"\.\d+", "", regex=True) #delete the
     # .number that exists after every PFAM number
@@ -246,10 +238,10 @@ for genome_name in genome_path_list:
     pfam_temp = list(itool.chain.from_iterable(temp)) #make them into a list
     pfam_temp_list = list(dict.fromkeys(pfam_temp))  # dict.fromkeys will preserve order and eliminate repeats
 
-    for item in pfam_temp_list:
+    for item in pfam_temp_list: #I think this just opens a column for each PFAM entry? check please future me
         genome_selected_PFAM[item] = ""
 
-    #objective is counting how many PFAMS exist in each row
+    #Creates a list of columns names that start with PF followed by any numbers, so every PFAM found in the genome
     temp_pfam_table = genome_selected_PFAM.loc[:, genome_selected_PFAM.filter(regex="PF\d+$", axis=1).columns]
     temp_pfam_table = temp_pfam_table.columns.values.tolist()
 
@@ -302,8 +294,8 @@ for genome_name in genome_path_list:
     genome_selected_PFAM_all_T.to_csv("Outputs/Transposed/" + genome_name.replace("_all_features.csv",
                                                                         "_PFAM_list_transposed.csv"), index=True)
     increment_counter()
-    counter_announcement = ("Finished genome " + str(counter) + " of " + str(len(genome_path_list)) +
-                            " (" + str(counter_percent) + "%)")
+    counter_announcement = (f"Finished genome {counter} of {len(genome_path_list)} ({counter_percent}%)")
+
     print(counter_announcement)
 
 #sort the final PFAM table, and handle index
