@@ -147,7 +147,7 @@ for item in annotation_columns_target:
 #Runtime calculation
 time_finished = time.time()
 
-print(f"{os.path.basename(__file__)}, took, {time_finished - time_start},  seconds to run")
+print(f"{os.path.basename(__file__)} took {time_finished - time_start}  seconds to run")
 
 print(f"Category contents are ok! (ฅ^•ﻌ•^ฅ)"
       f"\n proceeding to batch_COG_matcher ")

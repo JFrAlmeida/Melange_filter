@@ -10,7 +10,7 @@ import shutil
 import logging
 
 #My module imports
-from config import name_change_condition, annotation_columns_target
+from config import name_change_condition, annotation_columns_target, run_make_fasta
 from category_checks import cats_with_stuff, cats_with_types
 from config import run_dbcan_parser
 
@@ -226,7 +226,7 @@ for genome_name in genome_path_list:
     for item in annotation_columns_target: #item is the target column ("COG" "KO" etc.)
         for type in list(cats_with_types.keys()): #type here is the key to the type of annotation in config ("COG" "KO"
             # etc.), its value needs to match item to proceed
-            print(f"catswith types: {cats_with_types[type]}, and item: {item}")
+            # print(f"catswith types: {cats_with_types[type]}, and item: {item}")
             if cats_with_types[type] == item:
                 for category in list(cats_with_stuff.keys()): #category is cat_1, cat_2 etc.
                     for anno in cats_with_stuff[category]: #anno is the annotation targets, "COG132" "COG312" etc.
@@ -247,7 +247,7 @@ for genome_name in genome_path_list:
         logger.debug(genome_name)
         continue
 
-    genome_selected = genome.loc[filter_bool]
+    genome_selected = genome.loc[filter_bool].copy()
     genome_selected = genome_selected.rename(mapper={"row_0":"prokka_features"}, axis=1) #QoL change for the col name
     genome_selected = genome_selected.reset_index() #Integer index reset
 
@@ -263,9 +263,10 @@ for genome_name in genome_path_list:
     # Also unfucking the genome name a bit; cond is a regex pattern settable in config
     if no_change == False:
         simpler_genome_name = re.search(cond, genome_name).group(1) #leaves the genome name plus strain ID
+        simpler_genome_name = simpler_genome_name.replace("_all_features.csv","")
         genome_selected["genome_prokka_feats"] = simpler_genome_name + "_" + genome_selected["prokka_features"]
     else:
-        genome_selected["genome_prokka_feats"] = genome_name + "_" + genome_selected["prokka_features"]
+        genome_selected["genome_prokka_feats"] = genome_name.replace("_all_features.csv","") + "_" + genome_selected["prokka_features"]
 
     #Reorder dataframe so ["genome_prokka_feats"] is the first column
     cols = genome_selected.columns.tolist()
@@ -377,11 +378,15 @@ merged_df_untransposed.loc[: , "Total PFAMs per COG"] = merged_df_untransposed.i
 grouped_features_table.to_csv("Outputs/All_Genomes_grouped_features.csv", index=False)
 merged_df_untransposed.to_csv("Outputs/PFAM_grouped_table.csv", index=True)
 
+#Run Make_fasta.py
+if run_make_fasta:
+    import Make_fasta
+
+
 #Emptu genomes warning
 if empty_genome_counter != 0:
     warnings.warn(f"Script ran successfully! But {empty_genome_counter} genomes had none of the annotations you requested..."
-      f"\n a list of their names is in ./Logs/empty_genomes.log")
-
+      "\n a list of their names is in ./Logs/empty_genomes.log", stacklevel=2)
 
 #nice goodbye message
 print("Thank you for using my scripts, hope it helped (｡◕‿◕｡) -- JFA")
