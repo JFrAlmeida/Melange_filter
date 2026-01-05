@@ -2,10 +2,9 @@ import os
 import time
 import pandas as pd
 
-# Import variables from config now:
-from config import cat_1, cat_2, cat_3, cat_4, cat_5, cat_6, cat_7, cat_8, cat_9, cat_10
-from config import cat_1_name, cat_2_name, cat_3_name, cat_4_name, cat_5_name, cat_6_name, cat_7_name, cat_8_name, \
-    cat_9_name, cat_10_name
+# Import variablesfrom modules:
+from config import name_change_condition, annotation_columns_target
+from category_checks import cats_with_stuff, cats_with_types
 
 #For future reference, you can probably just wrap the search part in a function. Anyways a better way to do it would
 # be to do the search once and then divide the results after I think. But really why bother, this is fast enough

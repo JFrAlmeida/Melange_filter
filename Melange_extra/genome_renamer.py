@@ -14,6 +14,7 @@ import time
 
 
 
+
 time_start = time.time()
 
 #Add fucntions here
@@ -29,6 +30,7 @@ def get_first_line (gpath):
 
 #Default folder where each genome-containing-folder is located at for NCBI
 path_to_data = "ncbi_dataset/data/"
+secondary_path_to_data = "ncbi_dataset/ncbi_dataset/data/"
 
 #folder where you want to output your genomes to
 destination_path = "Genome_fasta_dump/"
@@ -44,14 +46,21 @@ else:
 
 
 #This block finds the path to every genome and makes lists with it
-
-list_temp = os.listdir(path_to_data) #lists everything in data
+if os.path.isdir(path_to_data):
+    list_temp = os.listdir(path_to_data) #lists everything in data
+    right_path = path_to_data
+elif os.path.isdir(secondary_path_to_data): # some extractions put the folder in this structure
+    list_temp = os.listdir(secondary_path_to_data) #lists everything in data
+    right_path = secondary_path_to_data
+else:
+    print("path to your data could not be found, make sure it is present!n/ quitting...")
+    quit()
 
 list_GCA = [file
             for file in list_temp
             if re.match(".*GCA*", file)] #stores only the GCA numbers of the genomes
 
-path_to_gcanr = [path_to_data + file
+path_to_gcanr = [right_path + file
                     for file in list_temp
                     if re.match(".*GCA*", file)] #stores the path up to /data/GCAnumber
 
@@ -68,6 +77,7 @@ for item in original_full_path:
     first_line = get_first_line(item)
     match = re.match("^[^ ]+\s+(.+?)(?=\s+\S+,)", first_line).group(1)
     match = match.replace(" ","_")
+    match = match.replace(":", "")
 
     #Determine file extension
     file_ext = re.search("\.[^.]+$", item).group(0)

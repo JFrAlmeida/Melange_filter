@@ -4,11 +4,18 @@ import pandas as pd
 import re
 from Bio import SeqIO
 import time
+import warnings
 from warnings import simplefilter
 import shutil
+import logging
 
-from config import all_cogs
-from config import annotation_column_target
+#My module imports
+from config import name_change_condition, annotation_columns_target
+from category_checks import cats_with_stuff, cats_with_types
+from config import run_dbcan_parser
+
+
+
 
 #This Script takes in the Melange annotation (https://sandragodinhosilva.github.io/melange/) of any number of genomes,
 # selects only specific COGs, adds to it the dna and amino acid sequences corresponding to those COGs, and produces two tables,
@@ -28,7 +35,7 @@ from config import annotation_column_target
 
 time_start = time.time()
 
-#### Put functions here ####
+#################### Put functions here ####################
 
 def increment_counter ():
     global counter
@@ -42,16 +49,45 @@ def extract_sequences(fasta_file, seqs):
     seq_dict = {record.id: str(record.seq) for record in SeqIO.parse(fasta_file, "fasta")}
     return [seq_dict.get(seq_id) for seq_id in seqs]  # Return sequence if ID exists
 
-#looks into a pandas df to find a column with the second parameter as name; prints "ITS HERE" if found
-def find_my_p_column(pandas_df, colname):
-    if colname in list(pandas_df.columns.values):
-        print(f"I found a col named {colname}!!!")
+############################################################
 
-####  #####
 
-# default path to ORFS, if you want to change it go ahead:
-ORFs_path = os.path.normpath("Annotation_results/Orfs_per_genome_dummy/") #Remove the Dummy part at the end
-# ORFs_path = os.path.normpath("Annotation_results/Orfs_per_genome/")
+################### logging basic config ###################
+
+if os.path.exists("Logs/"):
+    shutil.rmtree("Logs")
+    os.makedirs("Logs")
+    open("Logs/empty_genomes.log", "w")
+else:
+    os.makedirs("Logs")
+    open("Logs/empty_genomes.log", "w")
+
+logging.basicConfig(
+     filename="Logs/empty_genomes.log",
+     filemode="a",
+     format="{asctime} - {message}",
+     style="{",
+     datefmt="%Y-%m-%d %H:%M",
+    level=logging.DEBUG
+)
+
+logger = logging.getLogger(__name__)
+####################  hardset variables ####################
+
+#Counter for genome progress management
+counter = 0
+counter_percent = 0
+empty_genome_counter = 0
+empty_genome_exists = False
+no_change = False
+
+############################################################
+
+#Paths if rundbcan_parser has been run, vs not
+if run_dbcan_parser:
+    ORFs_path = os.path.normpath("Annotation_results/Orfs_per_genome_CAZy/")
+else:
+    ORFs_path = os.path.normpath("Annotation_results/Orfs_per_genome/")
 
 #location of Outputs and related tables, if it doesnt exist, make it
 if not os.path.exists("Outputs"):
@@ -81,13 +117,33 @@ if os.path.exists("Outputs/Fasta_files"):
 else:
     os.makedirs("Outputs/Fasta_files")
 
+
+
+
 #Location of the fna and aa files
 aa_fna_location = "Annotation/"
+
+#condition for arranging the name of the genome into the first column
+
+#Controls the condition to name each genome_name + PROKKA_feat concatenation, in the column "genome_prokka_feats"
+try:
+    if name_change_condition == "no_change":
+        no_change = True # Name will not be changed
+    elif name_change_condition != r"GC[AF]_\d+\.\d+_(.*?)_all_features\.csv":
+        cond = name_change_condition
+        print(f"your name_change_condition is : {name_change_condition}")
+    else:
+        cond = r"GC[AF]_\d+\.\d+_(.*?)_all_features\.csv"  # condition for name change will be this
+        print(f"name_change_condition was not set as any valid option in config.py, running as default...")
+
+except:
+    print("something went wrong processing name_change_condition variable, set in config, please ensure it is set \n"
+          "quitting...")
+    quit()
 
 
 
 ### Generate a description of the PFAM universe specific to each genome set
-
 #Location of PFAM description file
 pfam_desc_path = "Annotation_results/Pfam_description.csv"
 
@@ -132,9 +188,7 @@ pfam_list_dict = dict(zip(pfam_list_desc["PFAM_ACC"], pfam_list_desc["pfam_desc"
 grouped_features_table = pd.DataFrame()
 merged_df = pd.DataFrame()
 
-#Counter for genome progress management
-counter = 0
-counter_percent = 0
+
 
 
 #Ignoring performance warning from Pandas, which does not appear do be relevant, but spit out anyways past some loops
@@ -160,31 +214,42 @@ for genome_name in genome_path_list:
     #Now ready to start building the table
     genome = pd.read_csv(genome_path)
 
-    # Some genomes have a "P" column that is empty, and seems to do nothing, elminitating it here
-    if "P" in list(genome.columns.values):
-        genome = genome.drop(columns = "P")
-
     #Make a mask stating yes where a COG is in our list, and false when it isnt, use it to select lines of interest
     # create the empty bool series first
     filter_bool = pd.Series(dtype=bool)
 
-    # This loop makes a filter_bool boolean series that adds a true for only those lines containing any of the COGs listed above
-    for item in all_cogs:
-        finder = genome[annotation_column_target].str.contains(item, case=False, regex=True, na=False)
 
-        # this if - else allows to grow filter_bool by adding entries that have each item in all_cogs as true to the
-        # filter boolean
-        if filter_bool.size == 0:
-            filter_bool = finder
-            print(f"first filter is {sum(filter_bool)}")
-        else:
-            filter_bool = (filter_bool + finder)
-            print(f"next filter is {sum(filter_bool)}")
 
-    #This is when the mask is used to select the COGs, behaves similarly to match in R (I think)
+
+    # This loop makes a filter_bool pandas series of type boolean with true for values matching any of the annotations
+    # specified in any category in config.
+    for item in annotation_columns_target: #item is the target column ("COG" "KO" etc.)
+        for type in list(cats_with_types.keys()): #type here is the key to the type of annotation in config ("COG" "KO"
+            # etc.), its value needs to match item to proceed
+            print(f"catswith types: {cats_with_types[type]}, and item: {item}")
+            if cats_with_types[type] == item:
+                for category in list(cats_with_stuff.keys()): #category is cat_1, cat_2 etc.
+                    for anno in cats_with_stuff[category]: #anno is the annotation targets, "COG132" "COG312" etc.
+                        # print(f"looking for {anno} in {item}")
+                        finder = genome[item].str.contains(anno, case=False, na=False) # True where match is found
+                        if sum(finder) != 0: # to avoid operations when no information is added
+                            if not filter_bool.size == 0:
+                                filter_bool = filter_bool + finder # add finder to the boolean mask of other loops
+# inside the same genome. Builds a large boolean mask aggregating all True hits over every cat_
+                            else:
+                                filter_bool = finder # if its not made yet, make it
+
+
+    #This is when the boolean filter is used to return only rows for which the filter is TRUE
+    if sum(filter_bool) == 0:
+        #If filter_bool empty make a log into list of empty genomes
+        empty_genome_counter = empty_genome_counter + 1
+        logger.debug(genome_name)
+        continue
+
     genome_selected = genome.loc[filter_bool]
-    genome_selected = genome_selected.rename(mapper={"row_0":"prokka_features"}, axis=1)
-    genome_selected = genome_selected.reset_index()
+    genome_selected = genome_selected.rename(mapper={"row_0":"prokka_features"}, axis=1) #QoL change for the col name
+    genome_selected = genome_selected.reset_index() #Integer index reset
 
     #In case a dataframe is empty after the mask is applied, this skips the rest of the iteration
     if genome_selected.index.tolist() == []:
@@ -194,17 +259,15 @@ for genome_name in genome_path_list:
         print(counter_announcement)
         continue
 
-
     #Build a first column containing the genome name plus the prokka feature considered on that line
-    #unfucking the genome name
-    cond = r"GCA_\d+\.\d+_(.*?)_all_features\.csv"
-    simpler_genome_name = re.search(cond, genome_name).group(1) #leaves the genome name plus strain ID
-    print(simpler_genome_name)
+    # Also unfucking the genome name a bit; cond is a regex pattern settable in config
+    if no_change == False:
+        simpler_genome_name = re.search(cond, genome_name).group(1) #leaves the genome name plus strain ID
+        genome_selected["genome_prokka_feats"] = simpler_genome_name + "_" + genome_selected["prokka_features"]
+    else:
+        genome_selected["genome_prokka_feats"] = genome_name + "_" + genome_selected["prokka_features"]
 
-    #Make col with the unique name per genome per prokka feature
-    genome_selected["genome_prokka_feats"] = simpler_genome_name + "_" + genome_selected["prokka_features"]
-
-    #Reorder dataframe so ["genome_prokka_feats"]
+    #Reorder dataframe so ["genome_prokka_feats"] is the first column
     cols = genome_selected.columns.tolist()
     cols2 = cols[-1:] + cols[:-1]
     genome_selected = genome_selected[cols2]
@@ -219,15 +282,15 @@ for genome_name in genome_path_list:
     genome_selected = genome_selected.drop(["index"], axis=1)
 
     out_genome_path = os.path.join("Outputs/All_Features_per_Genome", genome_name)
-    genome_selected.to_csv(out_genome_path, index=False)
+    genome_selected.to_csv(os.path.normpath(out_genome_path), index=False)
 
 
     #making a dataframe that aggregates all the general features of all genomes into one file
-    if grouped_features_table.empty == True:
-        grouped_features_table = genome_selected
-    else:
+    if grouped_features_table.empty == False:
         genome_selected_no_head = genome_selected.drop([0])
         grouped_features_table = pd.concat([grouped_features_table, genome_selected], ignore_index=True, )
+    else:
+        grouped_features_table = genome_selected
 
     #PFAM table generation
     #The .copy() means I finally learned how python actually uses pointers :)
@@ -236,9 +299,9 @@ for genome_name in genome_path_list:
     # .number that exists after every PFAM number
     temp = list(genome_selected_PFAM.loc[:,"PFAM"].dropna().str.split("+")) #unfold the sequential PFAM numbers in the PFAM_ACC column
     pfam_temp = list(itool.chain.from_iterable(temp)) #make them into a list
-    pfam_temp_list = list(dict.fromkeys(pfam_temp))  # dict.fromkeys will preserve order and eliminate repeats
+    pfam_temp_list = list(dict.fromkeys(pfam_temp))  # dict.fromkeys will preserve order and eliminate duplicates
 
-    for item in pfam_temp_list: #I think this just opens a column for each PFAM entry? check please future me
+    for item in pfam_temp_list: # Opens an empty column for every PFAM entry
         genome_selected_PFAM[item] = ""
 
     #Creates a list of columns names that start with PF followed by any numbers, so every PFAM found in the genome
@@ -254,18 +317,10 @@ for genome_name in genome_path_list:
     # Get rid of any NaN columns that for some reason keep appearing from the PFAM lists above #
     genome_selected_PFAM = genome_selected_PFAM.drop(labels= "nan", axis= 1, errors = "ignore")
 
-    # Now just rename the column with pfam_list_dict, which has this structure: "PFAM number" : "pfam number : description"
-    #genome_selected_PFAM = genome_selected_PFAM.rename(mapper=pfam_list_dict, axis=1)
-
-    #For some reason I am getting a column "P" in some genomes, and I cant figure out why, so I am removing it here
-    col_temp_pfam = genome_selected_PFAM.columns.tolist()
-    pfam_temp_set = set(col_temp_pfam)
-    if "P" in pfam_temp_set:
-        genome_selected_PFAM = genome_selected_PFAM.drop("P", axis=1)
-
     #export this genome with its PFAM list to:
-    genome_selected_PFAM.to_csv("Outputs/Genomes_with_PFAM_list/" + genome_name.replace("_all_features.csv",
-                                                                                   "_PFAM_list.csv"),index=False)
+    genome_selected_PFAM.to_csv("Outputs/Genomes_with_PFAM_list/" +
+                                genome_name.replace("_all_features.csv",
+                                                    "_PFAM_list.csv"),index=False)
 
     #Below code makes both the intermediate transposed genome tables and a concatenated table with all PFAMs over
     # all genomes
@@ -273,13 +328,14 @@ for genome_name in genome_path_list:
     #Start by dropping unnecessary columns
     genome_selected_PFAM_all = genome_selected_PFAM.copy()
     genome_selected_PFAM_all = genome_selected_PFAM.set_index("genome_prokka_feats")
-    genome_selected_PFAM_all = genome_selected_PFAM_all.drop(["A", "CAZymes", "KO", "MEROPS", "prokka_features", "PFAM"], axis=1, errors="ignore")
+    genome_selected_PFAM_all = genome_selected_PFAM_all.drop(["A", "prokka_features", "PFAM"], axis=1, errors="ignore")
     genome_selected_PFAM_all_T = genome_selected_PFAM_all.T #Transposing now
     genome_selected_PFAM_all_T = genome_selected_PFAM_all_T.reset_index() #Fixing Index after transposing
     genome_selected_PFAM_all_T = genome_selected_PFAM_all_T.rename(columns = {"index": "a_genome_prokka_feats"}) #Still
     # fixing Index, leaving the name with an a before so that the sorting of the table in the end is simpler
 
-    genome_selected_PFAM_all_T = genome_selected_PFAM_all_T.set_index("a_genome_prokka_feats") #Finally index is "a_a_genome_prokka_feats"
+    #Finally index is "a_a_genome_prokka_feats"
+    genome_selected_PFAM_all_T = genome_selected_PFAM_all_T.set_index("a_genome_prokka_feats")
 
     #changing row names of dna and aa sequence for the sorting at the end of the script places columns as intended
     genome_selected_PFAM_all_T = genome_selected_PFAM_all_T.rename(mapper={"dna_sequence": "Dna_sequence",
@@ -291,11 +347,13 @@ for genome_name in genome_path_list:
     else:
         merged_df = merged_df.merge(genome_selected_PFAM_all_T, on="a_genome_prokka_feats", how="outer")
 
+    #writing PFAM table to csv
     genome_selected_PFAM_all_T.to_csv("Outputs/Transposed/" + genome_name.replace("_all_features.csv",
                                                                         "_PFAM_list_transposed.csv"), index=True)
+
+    #Icrement counter and announce genome finished!
     increment_counter()
     counter_announcement = (f"Finished genome {counter} of {len(genome_path_list)} ({counter_percent}%)")
-
     print(counter_announcement)
 
 #sort the final PFAM table, and handle index
@@ -319,10 +377,16 @@ merged_df_untransposed.loc[: , "Total PFAMs per COG"] = merged_df_untransposed.i
 grouped_features_table.to_csv("Outputs/All_Genomes_grouped_features.csv", index=False)
 merged_df_untransposed.to_csv("Outputs/PFAM_grouped_table.csv", index=True)
 
+#Emptu genomes warning
+if empty_genome_counter != 0:
+    warnings.warn(f"Script ran successfully! But {empty_genome_counter} genomes had none of the annotations you requested..."
+      f"\n a list of their names is in ./Logs/empty_genomes.log")
+
+
 #nice goodbye message
 print("Thank you for using my scripts, hope it helped (｡◕‿◕｡) -- JFA")
 
 #Runtime calculation
 time_finished = time.time()
 
-print(os.path.basename(__file__), " took ", (time_finished - time_start), " seconds to run")
+print(f"{os.path.basename(__file__)}, took , {time_finished - time_start}, seconds to run")
