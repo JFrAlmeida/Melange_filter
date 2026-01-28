@@ -4,60 +4,53 @@ import time
 import pandas as pd
 import textwrap
 
-# Import variables from modules:
-from config import name_change_condition, annotation_columns_target, make_fasta_groups, select_by_dna
-from category_checks import cats_with_stuff, cats_with_types, cats_with_names
-
+#my imports
+from ..config import name_change_condition, annotation_columns_target, make_fasta_groups, select_by_dna, path_main_melange
+from ..categories.category_checks import cats_with_stuff, cats_with_types, cats_with_names
 
 time_start = time.time()
-
-#make folders
-if os.path.exists("Outputs/Fasta_files"): #cleans up folder if it has a bunch of trash in it, same for the rest
-    shutil.rmtree("Outputs/Fasta_files")
-    os.makedirs("Outputs/Fasta_files")
-else:
-    os.makedirs("Outputs/Fasta_files")
+print(f"starting {os.path.basename(__file__)}...")
 
 #paths
-path_to_outputs = "Outputs/Fasta_files/"
+path_to_fasta = os.path.normpath(os.path.join(path_main_melange, "Outputs/Fasta_files"))
+all_genome_features = os.path.normpath(os.path.join(path_main_melange, "Outputs/All_Genomes_grouped_features.csv"))
 
-
+#make folders
+if os.path.exists(path_to_fasta): #cleans up folder if it has a bunch of trash in it, same for the rest
+    shutil.rmtree(path_to_fasta)
+    os.makedirs(path_to_fasta)
+else:
+    os.makedirs(path_to_fasta)
 
 #import the table!
-df = pd.read_csv("Outputs/All_Genomes_grouped_features.csv")
+df = pd.read_csv(all_genome_features)
 
 #aggregate annotation columns, in hindsight making the "which column is it in" problem very easy to solve... oh well
-df["anno_sum"] = df[["COG", "KO", "MEROPS", "CAZymes", "PFAM"]].astype(str).agg('+'.join, axis=1)
-
-
-
+df["anno_sum"] = df[annotation_columns_target].astype(str).agg('+'.join, axis=1)
 
 #start selecting by
 for category in make_fasta_groups: #selects groups of categories
-
-    #MISSING IMPLEMENTATION OF THIS FOR ONE CATEGORY OR ALL CATEGORIES!!!
-
     name_list = []
     seq_list = []
+
     #make sure to set the name only once per cycle
     name_set = False
-
     if "!" in category:
 
         #now have a list with all cats that go in one fasta file
         divided = category.split("!")
 
         # Set the name for the fasta file as the name of the first category
-        fasta_name = cats_with_names[("name_" + divided[0])]
+        if not name_set:
+            fasta_name = cats_with_names[("name_" + divided[0])]
 
         #In case several cats end up with the same name
-        while fasta_name in os.listdir(path_to_outputs):
+        while fasta_name in os.listdir(path_to_fasta):
             fasta_name = fasta_name + "_1"
 
         #Now make the file path for the fasta
         fasta_name = fasta_name + ".fasta"
-        path_to_write = os.path.join(path_to_outputs,fasta_name)
-        # print(f"path_to_write: {path_to_write}")
+        path_to_write = os.path.join(path_to_fasta,fasta_name)
         name_set = True
 
         #to hold all the annnotations
@@ -69,16 +62,16 @@ for category in make_fasta_groups: #selects groups of categories
 
     else:
         # Set the name for the fasta file
-        fasta_name = cats_with_names[("name_" + category)]
+        if not name_set:
+            fasta_name = cats_with_names[("name_" + category)]
 
         #In case several cats end up with the same name
-        while fasta_name in os.listdir(path_to_outputs):
+        while fasta_name in os.listdir(path_to_fasta):
             fasta_name = fasta_name + "_1"
 
         #Now make the file path for the fasta
         fasta_name = fasta_name + ".fasta"
-        path_to_write = os.path.join(path_to_outputs, fasta_name)
-        # print(f"path_to_write: {path_to_write}")
+        path_to_write = os.path.join(path_to_fasta, fasta_name)
         name_set = True
 
         # to hold all the annnotations
@@ -130,4 +123,4 @@ for category in make_fasta_groups: #selects groups of categories
 
 time_finished = time.time()
 
-print(f"{os.path.basename(__file__)}, took , {time_finished - time_start}, seconds to run")
+print(f"{os.path.basename(__file__)} took {time_finished - time_start} seconds to run")

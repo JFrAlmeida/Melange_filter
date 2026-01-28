@@ -10,12 +10,10 @@ import shutil
 import logging
 
 #My module imports
-from config import name_change_condition, annotation_columns_target, run_make_fasta
-from category_checks import cats_with_stuff, cats_with_types
-from config import run_dbcan_parser
-
-
-
+from config import name_change_condition, annotation_columns_target, run_make_fasta, run_dbcan_parser
+from config import run_presence_counter, run_stacked_bar_plot, path_main_melange
+from categories.category_checks import cats_with_stuff, cats_with_types
+from funcs.lil_funcs import increment_counter, extract_sequences
 
 #This Script takes in the Melange annotation (https://sandragodinhosilva.github.io/melange/) of any number of genomes,
 # selects only specific COGs, adds to it the dna and amino acid sequences corresponding to those COGs, and produces two tables,
@@ -34,96 +32,87 @@ from config import run_dbcan_parser
 #############################################
 
 time_start = time.time()
+print(f"starting {os.path.basename(__file__)}...")
 
-#################### Put functions here ####################
+#paths
+path_logs =  os.path.normpath(os.path.join(path_main_melange,"Logs"))
+path_log_file = os.path.normpath(os.path.join(path_logs,"empty_genomes.log"))
+path_all_features_per_genome = os.path.normpath(os.path.join(path_main_melange, "Outputs/All_Features_per_Genome"))
+path_pfam_list = os.path.normpath(os.path.join(path_main_melange, "Outputs/Genomes_with_PFAM_list"))
+path_Transposed = os.path.normpath(os.path.join(path_main_melange, "Outputs/Transposed"))
+path_fasta_files = os.path.normpath(os.path.join(path_main_melange, "Outputs/Fasta_files"))
+aa_fna_location = os.path.normpath(os.path.join(path_main_melange, "Annotation"))
+pfam_desc_path = os.path.normpath(os.path.join(path_main_melange, "Annotation_results/Pfam_description.csv")) #Location of PFAM description file
+path_transposed = os.path.normpath(os.path.join(path_main_melange, "Outputs/Transposed/"))
 
-def increment_counter ():
-    global counter
-    global counter_percent
-    counter = counter + 1
-    counter_percent = (counter / len(genome_path_list)) * 100
-    counter_percent = round(counter_percent, 2)
+path_genomes_grouped_features = os.path.normpath(os.path.join(path_main_melange, "Outputs/All_Genomes_grouped_features.csv"))
+path_pfam_grouped_table = os.path.normpath(os.path.join(path_main_melange, "Outputs/PFAM_grouped_table.csv"))
 
-#Function to extract sequences from FASTA files
-def extract_sequences(fasta_file, seqs):
-    seq_dict = {record.id: str(record.seq) for record in SeqIO.parse(fasta_file, "fasta")}
-    return [seq_dict.get(seq_id) for seq_id in seqs]  # Return sequence if ID exists
-
-############################################################
 
 
 ################### logging basic config ###################
-
-if os.path.exists("Logs/"):
-    shutil.rmtree("Logs")
-    os.makedirs("Logs")
-    open("Logs/empty_genomes.log", "w")
+if os.path.exists(path_logs): #cleans up folder if it has a bunch of trash in it
+    files = [file for file in os.listdir(path_logs) if ".log" in file]
+    if files:  # If list not empty basically
+        for item in files:
+            os.remove(os.path.normpath(os.path.join(path_logs, item)))  # removes old files
 else:
-    os.makedirs("Logs")
-    open("Logs/empty_genomes.log", "w")
+    os.makedirs(path_logs)
+    open(path_log_file, "w")
 
 logging.basicConfig(
-     filename="Logs/empty_genomes.log",
+     filename=path_log_file,
      filemode="a",
      format="{asctime} - {message}",
      style="{",
      datefmt="%Y-%m-%d %H:%M",
     level=logging.DEBUG
 )
+my_logger = logging.getLogger(__name__)
 
-logger = logging.getLogger(__name__)
 ####################  hardset variables ####################
-
-#Counter for genome progress management
-counter = 0
-counter_percent = 0
-empty_genome_counter = 0
-empty_genome_exists = False
-no_change = False
+counter = 0 #for genome progress announcement
+counter_percent = 0 #for genome progress announcement
+empty_genome_counter = 0 #self explanatory
+empty_genome_exists = False #self explanatory
+no_change = False #for filename management
 
 ############################################################
 
 #Paths if rundbcan_parser has been run, vs not
 if run_dbcan_parser:
-    ORFs_path = os.path.normpath("Annotation_results/Orfs_per_genome_CAZy/")
+    ORFs_path = os.path.normpath(os.path.join(path_main_melange, "Annotation_results/Orfs_per_genome_CAZy/"))
 else:
-    ORFs_path = os.path.normpath("Annotation_results/Orfs_per_genome/")
+    ORFs_path = os.path.normpath(os.path.join(path_main_melange, "Annotation_results/Orfs_per_genome/"))
 
 #location of Outputs and related tables, if it doesnt exist, make it
-if not os.path.exists("Outputs"):
+if not os.path.exists(os.path.normpath(os.path.join(path_main_melange, "Outputs"))):
     os.makedirs("Outputs")
 
-if os.path.exists("Outputs/All_Features_per_Genome"): #cleans up folder if it has a bunch of trash in it, same for the rest
-    shutil.rmtree("Outputs/All_Features_per_Genome")
-    os.makedirs("Outputs/All_Features_per_Genome")
+#this block cleans up folders if it has a bunch of trash in it
+if os.path.exists(path_all_features_per_genome):
+    shutil.rmtree(path_all_features_per_genome)
+    os.makedirs(path_all_features_per_genome)
 else:
-    os.makedirs("Outputs/All_Features_per_Genome")
+    os.makedirs(path_all_features_per_genome)
 
-if os.path.exists("Outputs/Genomes_with_PFAM_list"):
-    shutil.rmtree("Outputs/Genomes_with_PFAM_list")
-    os.makedirs("Outputs/Genomes_with_PFAM_list")
+if os.path.exists(path_pfam_list):
+    shutil.rmtree(path_pfam_list)
+    os.makedirs(path_pfam_list)
 else:
-    os.makedirs("Outputs/Genomes_with_PFAM_list")
+    os.makedirs(path_pfam_list)
 
-if os.path.exists("Outputs/Transposed"):
-    shutil.rmtree("Outputs/Transposed")
-    os.makedirs("Outputs/Transposed")
+if os.path.exists(path_Transposed):
+    shutil.rmtree(path_Transposed)
+    os.makedirs(path_Transposed)
 else:
-    os.makedirs("Outputs/Transposed")
+    os.makedirs(path_Transposed)
 
-if os.path.exists("Outputs/Fasta_files"):
-    shutil.rmtree("Outputs/Fasta_files")
-    os.makedirs("Outputs/Fasta_files")
+if os.path.exists(path_fasta_files):
+    shutil.rmtree(path_fasta_files)
+    os.makedirs(path_fasta_files)
 else:
-    os.makedirs("Outputs/Fasta_files")
-
-
-
-
-#Location of the fna and aa files
-aa_fna_location = "Annotation/"
-
-#condition for arranging the name of the genome into the first column
+    os.makedirs(path_fasta_files)
 
 #Controls the condition to name each genome_name + PROKKA_feat concatenation, in the column "genome_prokka_feats"
 try:
@@ -133,19 +122,18 @@ try:
         cond = name_change_condition
         print(f"your name_change_condition is : {name_change_condition}")
     else:
-        cond = r"GC[AF]_\d+\.\d+_(.*?)_all_features\.csv"  # condition for name change will be this
-        print(f"name_change_condition was not set as any valid option in config.py, running as default...")
-
+        if name_change_condition == r"GC[AF]_\d+\.\d+_(.*?)_all_features\.csv":
+            cond = r"GC[AF]_\d+\.\d+_(.*?)_all_features\.csv"  # condition for name change will be this
+        else:
+            print(f"name_change_condition was not set as any valid option in config.py, running as "
+                  f"'rGC[AF]_\d+\.\d+_(.*?)_all_features\.csv'...")
+            cond = r"GC[AF]_\d+\.\d+_(.*?)_all_features\.csv"
 except:
     print("something went wrong processing name_change_condition variable, set in config, please ensure it is set \n"
           "quitting...")
     quit()
 
-
-
 ### Generate a description of the PFAM universe specific to each genome set
-#Location of PFAM description file
-pfam_desc_path = "Annotation_results/Pfam_description.csv"
 
 #Make a dict with all entries of PFAMs
 pfam_desc_full = pd.read_csv(pfam_desc_path)
@@ -188,28 +176,21 @@ pfam_list_dict = dict(zip(pfam_list_desc["PFAM_ACC"], pfam_list_desc["pfam_desc"
 grouped_features_table = pd.DataFrame()
 merged_df = pd.DataFrame()
 
-
-
-
 #Ignoring performance warning from Pandas, which does not appear do be relevant, but spit out anyways past some loops
 simplefilter(action="ignore", category=pd.errors.PerformanceWarning)
-
-
 
 #Open genome and build the metainfo-table
 for genome_name in genome_path_list:
 
-    genome_path = os.path.join(ORFs_path, genome_name)
+    genome_path = os.path.normpath(os.path.join(ORFs_path, genome_name))
 
     #paths to fna and aa files are prepared
     aa_name = genome_name.replace("_all_features.csv", ".faa")
-    aa_joined = os.path.join(aa_fna_location, aa_name)
-    aa_path = os.path.normpath(aa_joined)
+    aa_path = os.path.normpath(os.path.join(aa_fna_location, aa_name))
 
     #path to fna
     ffn_name = genome_name.replace("_all_features.csv", ".ffn")
-    ffn_joined = os.path.join(aa_fna_location, ffn_name)
-    ffn_path = os.path.normpath(ffn_joined)
+    ffn_path = os.path.normpath(os.path.join(aa_fna_location, ffn_name))
 
     #Now ready to start building the table
     genome = pd.read_csv(genome_path)
@@ -217,9 +198,6 @@ for genome_name in genome_path_list:
     #Make a mask stating yes where a COG is in our list, and false when it isnt, use it to select lines of interest
     # create the empty bool series first
     filter_bool = pd.Series(dtype=bool)
-
-
-
 
     # This loop makes a filter_bool pandas series of type boolean with true for values matching any of the annotations
     # specified in any category in config.
@@ -244,7 +222,7 @@ for genome_name in genome_path_list:
     if sum(filter_bool) == 0:
         #If filter_bool empty make a log into list of empty genomes
         empty_genome_counter = empty_genome_counter + 1
-        logger.debug(genome_name)
+        my_logger.debug(genome_name)
         continue
 
     genome_selected = genome.loc[filter_bool].copy()
@@ -281,9 +259,8 @@ for genome_name in genome_path_list:
 
     #eliminate an Index column that remains leftover
     genome_selected = genome_selected.drop(["index"], axis=1)
-
-    out_genome_path = os.path.join("Outputs/All_Features_per_Genome", genome_name)
-    genome_selected.to_csv(os.path.normpath(out_genome_path), index=False)
+    out_genome_path = os.path.normpath(os.path.join(path_all_features_per_genome, genome_name))
+    genome_selected.to_csv(out_genome_path, index=False)
 
 
     #making a dataframe that aggregates all the general features of all genomes into one file
@@ -319,9 +296,8 @@ for genome_name in genome_path_list:
     genome_selected_PFAM = genome_selected_PFAM.drop(labels= "nan", axis= 1, errors = "ignore")
 
     #export this genome with its PFAM list to:
-    genome_selected_PFAM.to_csv("Outputs/Genomes_with_PFAM_list/" +
-                                genome_name.replace("_all_features.csv",
-                                                    "_PFAM_list.csv"),index=False)
+    genome_selected_PFAM.to_csv(os.path.normpath(os.path.join(path_pfam_list,
+                                genome_name.replace("_all_features.csv","_PFAM_list.csv"))),index=False)
 
     #Below code makes both the intermediate transposed genome tables and a concatenated table with all PFAMs over
     # all genomes
@@ -349,8 +325,10 @@ for genome_name in genome_path_list:
         merged_df = merged_df.merge(genome_selected_PFAM_all_T, on="a_genome_prokka_feats", how="outer")
 
     #writing PFAM table to csv
-    genome_selected_PFAM_all_T.to_csv("Outputs/Transposed/" + genome_name.replace("_all_features.csv",
-                                                                        "_PFAM_list_transposed.csv"), index=True)
+    genome_selected_PFAM_all_T.to_csv(os.path.normpath(os.path.join(path_transposed,
+                                                                    genome_name.replace("_all_features.csv",
+                                                                                        "_PFAM_list_transposed.csv"))),
+                                      index=True)
 
     #Icrement counter and announce genome finished!
     increment_counter()
@@ -373,14 +351,18 @@ merged_df_untransposed.loc["Total sum of each PFAM"] = merged_df_untransposed.su
 merged_df_untransposed.loc[: , "Total PFAMs per COG"] = merged_df_untransposed.iloc[:, 3:].sum(
     numeric_only= True, axis= 1) #row totals
 
-
 #Export general tables
-grouped_features_table.to_csv("Outputs/All_Genomes_grouped_features.csv", index=False)
-merged_df_untransposed.to_csv("Outputs/PFAM_grouped_table.csv", index=True)
+grouped_features_table.to_csv(path_genomes_grouped_features, index=False)
+merged_df_untransposed.to_csv(path_pfam_grouped_table, index=True)
 
-#Run Make_fasta.py
+
+#Scripts to run after this one is done
 if run_make_fasta:
-    import Make_fasta
+    from .misc import Make_fasta
+if run_presence_counter:
+    from .statistics import presence_counter
+if run_stacked_bar_plot:
+    from .statistics import Stacked_bar_plot
 
 
 #Emptu genomes warning
@@ -393,5 +375,4 @@ print("Thank you for using my scripts, hope it helped (｡◕‿◕｡) -- JFA")
 
 #Runtime calculation
 time_finished = time.time()
-
-print(f"{os.path.basename(__file__)}, took , {time_finished - time_start}, seconds to run")
+print(f"{os.path.basename(__file__)} took {time_finished - time_start} seconds to run")

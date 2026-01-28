@@ -4,28 +4,16 @@ import time
 import shutil
 import numpy as np
 import pandas as pd
+import itertools
 
-
-
-
-
-#-------------------  Functions below  -------------------#
-
-#Takes a dict, key, separator and a string object to store results; Used in script to parse cazymes annotations
-def Annotation_builder(dict, key, string, sep):
-    for n in range(0, int(dict[key])):
-        if string == "":
-            string = string + key
-        else:
-            string = string + sep + key
-    return string
-
-
-#-------------------  Functions above  -------------------#
+#my modules
+from ..config import dbcan_name_change, path_main_melange
+from ..funcs.lil_funcs import Annotation_builder, pandas_rows_by_listofnumbers
 
 
 #Timer
 time_start = time.time()
+print(f"starting {os.path.basename(__file__)}...")
 
 #-------------------  hard-set variables  -------------------#
 
@@ -33,22 +21,44 @@ time_start = time.time()
 sep="+"
 
 #Relative path to input folder
-input_folder = os.path.normpath("dbcan_output/")
+input_folder = os.path.normpath(os.path.join(path_main_melange,"dbcan_output/"))
 
 #Relative path to the desired Output folder
-output_folder = "processed_dbcan/"
+output_folder = os.path.normpath(os.path.join(path_main_melange,"processed_dbcan"))
+
+#output for cazyms_counts
+cazymes_count_output = os.path.normpath(os.path.join(path_main_melange,"Annotation_results/CAZymes_counts.csv"))
 
 overview_notfound_counter = 0
 
+#to save counts by genome to generate the counts_CAZYmes file
+series_list = []
+
 ############################## Code starts ##############################
 
-#Functions
+#for name changing of the files:
+no_change = False
 
-#pandas_df is the target df, column is your target column, conditions is a list of any numebrs to be passed to pandas .isin()
-def pandas_rows_by_listofnumbers(pandas_df,column, conditions):
-    finder = pandas_df[column].isin(conditions)
-    new_df = pandas_df.loc[finder].copy()
-    return new_df
+try:
+    if dbcan_name_change == "no_change":
+        no_change = True # Name will not be changed
+    elif dbcan_name_change != "^(?:[^_]*_){2}(.*)$":
+        cond = dbcan_name_change
+        print(f"your name_change_condition is : {dbcan_name_change}")
+    else:
+        if dbcan_name_change == "^(?:[^_]*_){2}(.*)$":
+            cond = dbcan_name_change  # condition for name change will be this
+        else:
+            print(f"name_change_condition was not set as any valid option in config.py, running as "
+                  f"'^(?:[^_]*_){2}(.*)$'...")
+            cond = '^(?:[^_]*_){2}(.*)$'
+
+except:
+    print("something went wrong processing dbcan_name_change variable set in config, please ensure it is set \n"
+          "quitting...")
+    quit()
+
+
 
 #Check if the input folder exists and has stuff
 if not os.path.exists(input_folder):
@@ -75,8 +85,8 @@ for folder in os.listdir(input_folder):
         #Catch events where overview cannot be found
         df = pd.read_csv(overview_path,
                          sep= "\t").drop(
-            labels= "EC#",
-            axis= "columns")
+                                            labels= "EC#",
+                                            axis= "columns")
     except:
         print(f"overview.txt could not be found inside {genome_name}, skipping...")
         overview_notfound_counter = overview_notfound_counter + 1
@@ -85,9 +95,7 @@ for folder in os.listdir(input_folder):
 
     df_good_hits = pandas_rows_by_listofnumbers(df,"#ofTools",[3,2])
 
-
     #The following block cleans out the annotation columns of their weird annotations, standardizing them
-
     #HMMER column
     #This cleans out the things between parenthesis in HMMMER annotation
     df_good_hits["HMMER_clean"] = df_good_hits["HMMER"].str.replace(pat= "\([^()]*\)", repl= "", regex= True)
@@ -132,8 +140,6 @@ for folder in os.listdir(input_folder):
         # List with the row-wise entries, including index to merge back later
         row_list = [my_index, item1, item2, item3]
 
-        # print(f"row_list: {row_list}")
-
         #This small block will make three lists with the annotations of each tool as a single item
         #HMMER_clean
         if "+" in item1:
@@ -142,12 +148,10 @@ for folder in os.listdir(input_folder):
         else:
             list_item1 = [item1]
             # print(f"list_item1: {list_item1}")
-
         #dbCAN_sub_clean
         if "+" in item2:
             list_item2 = item2.split("+")
             # print(f"list_item2 ''+': {list_item2}")
-
         else:
             list_item2 = [item2]
             # print(f"list_item2: {list_item2}")
@@ -163,27 +167,22 @@ for folder in os.listdir(input_folder):
 
         #Initial dicts to be used below
         dict1 = dict(); dict2 = dict(); dict3 = dict()
-
         # now lets create dictionaries with counts of each separate item
         for key in list_item1:
             if not key == "-":
                 dict1.update({key : list_item1.count(key)})
             else:
                 dict1 = {}
-
         for key in list_item2:
             if not key == "-":
                 dict2.update({key : list_item2.count(key)})
             else:
                 dict2 = {}
-
         for key in list_item3:
             if not key == "-":
                 dict3.update({key : list_item3.count(key)})
             else:
                 dict3 = {}
-
-        # print(f"dict1: {dict1}, dict2: {dict2}, dict3: {dict3}")
 
         #append index to the index_list
         index_list_final_series.append(my_index)
@@ -212,22 +211,17 @@ for folder in os.listdir(input_folder):
 
             #This controls whether if statements down below are run or not
             solution_found = False
-
             #to build the actual final annotation column
             string_end = ""
-
             #Require presence in at least two annotation tools; keyindictn is a checker for if the key exists in that tool
             keyindict1 = key in dict1; keyindict2 = key in dict2; keyindict3 = key in dict3
             keycheck = keyindict1 + keyindict2 + keyindict3
-
-            # print(f"keycheck is {keycheck}, keyindict1 is: {keyindict1}, keyindict2 is: {keyindict2}, keyindict3 is: {keyindict3}")
 
             #Only include that annotation if it is annotated by at elast two tools, otherwise skip it
             if keycheck >= 2:
 
                 # If key in all 3 tools
                 if keycheck == 3:
-                    # print("I am on all 3 keys")
 
                     #In case where 2 annotation tools agree on the count of one annotation, but the third doesn't, take the
                     # case where 2 agree
@@ -235,19 +229,16 @@ for folder in os.listdir(input_folder):
                         if dict1[key] == dict2[key] and (dict3[key] < dict1[key] or dict3[key] > dict1[key]):
                             string_end = Annotation_builder(dict1, key, string_end, sep=sep)
                             solution_found = True
-                            # print("check 0.3")
 
                     if not solution_found: #These means basically, if a solution was found before dont run this code!
                         if dict2[key] == dict3[key] and (dict1[key] < dict2[key] or dict1[key] > dict2[key]):
                             string_end = Annotation_builder(dict2, key, string_end, sep=sep)
                             solution_found = True
-                            # print("check 0.6")
 
                     if not solution_found:  # These means basically, if a solution was found before dont run this code!
                         if dict3[key] == dict1[key] and (dict2[key] < dict3[key] or dict2[key] > dict3[key]):
                             string_end = Annotation_builder(dict3, key, string_end, sep=sep)
                             solution_found = True
-                            # print("check 0.9")
 
                     #In case no 2 tools have the same number of a given annotation
                     if not solution_found: #These means basically, if a solution was found before dont run this code!
@@ -257,65 +248,45 @@ for folder in os.listdir(input_folder):
                             if dict2[key] <= dict1[key]:
                                 string_end = Annotation_builder(dict2, key, string_end, sep=sep)
                                 solution_found = True
-                                # print("check1")
-
                             else:
                                 string_end = Annotation_builder(dict1, key, string_end, sep=sep)
                                 solution_found = True
-                                # print("check2")
-
                         else:
                             #else dict3 v 1
                             if dict3[key] <= dict1[key]:
                                 string_end = Annotation_builder(dict3, key, string_end, sep=sep)
                                 solution_found = True
-                                # print("check3")
-
                             else:
                                 string_end = Annotation_builder(dict1, key, string_end, sep=sep)
                                 solution_found = True
-                                # print("check4")
 
                 #If keycheck is 2, then key must not be in one of the tools, and loop jumps here, do the comparison below
-
                 if not solution_found:  # These means basically, if a solution was found before dont run this code!
                     # if its not in dict1
                     if not keyindict1:
                         if dict2[key] <= dict3[key]:
                             string_end = Annotation_builder(dict2, key, string_end, sep=sep)
                             solution_found = True
-                            # print("check5")
-
                         else:
                             string_end = Annotation_builder(dict3, key, string_end, sep=sep)
                             solution_found = True
-                            # print("check6")
-
                     #Now if its not on dict2
                     if not keyindict2:
                         if dict1[key] <= dict3[key]:
                             string_end = Annotation_builder(dict1,key,string_end,sep=sep)
                             solution_found = True
-                            # print("check7")
-
                         else:
                             string_end = Annotation_builder(dict3,key,string_end,sep=sep)
                             solution_found = True
-                            # print("check8")
-
                     # Now if its not on dict3
                     if not keyindict3:
                         if dict1[key] <= dict2[key]:
                             string_end = Annotation_builder(dict1,key,string_end,sep=sep)
                             solution_found = True
-                            # print("check9")
-
                         else:
                             string_end = Annotation_builder(dict2,key,string_end,sep=sep)
                             solution_found = True
                             # print("check10")
-
-            # print(f"this is the string: {string_end}, my index is: {my_index}")
 
             if solution_found: # only add to string if a solution has been found
                 if interm_key_outcome != "":
@@ -323,30 +294,18 @@ for folder in os.listdir(input_folder):
                 else:
                     interm_key_outcome = string_end
 
-                # print(f"this interm_key_outcome: {interm_key_outcome}")
-
-
         data_list_final_series.append(interm_key_outcome)
 
     #make a pandas series from the index list and the list built from interm_key_outcome
     anno_series = pd.Series(data=data_list_final_series, index=index_list_final_series, name="inter_ann3")
-
-    #make it a column now
     df_good_hits["inter_anno3"] = anno_series
-
-    #Concatenate both annotation columns
     df_good_hits["final_annotation"] = df_good_hits["inter_anno2"].astype(str) + df_good_hits["inter_anno3"].astype(str)
-
-    #Clean columns, as Nan gets converted to str as well as an artifact
     df_good_hits["final_annotation"] = df_good_hits["final_annotation"].str.replace("nan", repl= "")
-
-    #Clean out the intermediate columns for the final annotation
     df_good_hits = df_good_hits.drop(labels= ["inter_anno3",
                                               "inter_anno2",
                                               "inter_anno"],
                                      axis=1
                                      )
-
     #Clean out additionally the now outdated annotations
     df_good_hits_clean_absolut = df_good_hits.drop(labels= ["HMMER",
                                                             "dbCAN_sub",
@@ -354,21 +313,44 @@ for folder in os.listdir(input_folder):
                                                             "#ofTools"],
                                                    axis=1
                                                    )
+
     #Export table with the old annotations as included
     # df_good_hits.to_csv("/home/jfa/Aquimarina_review/process_dbcan/almost_clean.tsv", sep= "\t", index=False)
 
-    #Outgoing path
+    #export table
     export_path = os.path.normpath(output_folder + genome_name + "_dbcan_clean.csv")
-
-    #Full cleaned table with only cleaned annotations and final annotation (and PROKKA features
     df_good_hits_clean_absolut.to_csv(export_path, sep= ",", index=False)
 
+    #Turn the annotations into a list, to process for the counts file
+    base_list = df_good_hits_clean_absolut["final_annotation"].tolist()
+    unfolded = []
+
+    #Unfold the list by the "+" separator
+    for item in base_list:
+        if "+" in item:
+            unfolded = unfolded + item.split("+")
+        else:
+            if not "":
+                unfolded = unfolded + [item]
+
+    #some elements wind up as "", removing here
+    unfolded = [x for x in unfolded if x != ""]
+
+    #count each presence with pandas
+    count_series = pd.Series(data=unfolded, name=genome_name).value_counts()
+    count_series = count_series.sort_index(ascending=True, inplace= False).rename(genome_name)
+    series_list.append(count_series)
 
 #print how many genomes did not have an overview file
 if overview_notfound_counter > 0:
     print(f"The Overview.txt file, expected inside the folder of each genome as the output of dbcan was not found for "
           f"{overview_notfound_counter} genomes")
 
+#Make a dataframe for the counts CAZYmes table
+counts_df = pd.concat(series_list, axis=1).sort_index(axis="index").fillna(value=0)
+#Export it to Annotations_results
+counts_df.to_csv(cazymes_count_output, index_label="index")
+
 time_finished = time.time()
 
-print(f"{os.path.basename(__file__)}  took , {time_finished - time_start},  seconds to run \n Thank you for using this script!! JFA")
+print(f"{os.path.basename(__file__)} took {time_finished - time_start} seconds to run \n Thank you for using this script!! JFA")

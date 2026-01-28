@@ -3,17 +3,14 @@ import os
 import time
 
 #Config imports
-from config import config_locals
-from config import annotation_columns_target
-from config import run_dbcan_parser
+from ..config import config_locals, annotation_columns_target, run_dbcan_parser
 
 #Timer
 time_start = time.time()
 
 #Run dbcan_parser
 if run_dbcan_parser:
-    import process_dbcan_results
-    import parse_dbcan_to_melange_ORF
+    from dbcan_processing import process_dbcan_results, parse_dbcan_to_melange_ORF
 
 #Makes a dictionary with the format cat_n : ["COGXX1","COGXX2" etc.], excludes empty lists
 cats_with_stuff = {
