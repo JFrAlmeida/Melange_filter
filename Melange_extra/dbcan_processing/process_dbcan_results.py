@@ -1,14 +1,12 @@
 import os
-import re
 import time
 import shutil
 import numpy as np
 import pandas as pd
-import itertools
 
 #my modules
-from ..config import dbcan_name_change, path_main_melange
-from ..funcs.lil_funcs import Annotation_builder, pandas_rows_by_listofnumbers
+from config import dbcan_name_change, path_main_melange
+from funcs.lil_funcs import Annotation_builder, pandas_rows_by_listofnumbers
 
 
 #Timer
@@ -25,7 +23,6 @@ input_folder = os.path.normpath(os.path.join(path_main_melange,"dbcan_output/"))
 
 #Relative path to the desired Output folder
 output_folder = os.path.normpath(os.path.join(path_main_melange,"processed_dbcan"))
-
 #output for cazyms_counts
 cazymes_count_output = os.path.normpath(os.path.join(path_main_melange,"Annotation_results/CAZymes_counts.csv"))
 
@@ -318,7 +315,7 @@ for folder in os.listdir(input_folder):
     # df_good_hits.to_csv("/home/jfa/Aquimarina_review/process_dbcan/almost_clean.tsv", sep= "\t", index=False)
 
     #export table
-    export_path = os.path.normpath(output_folder + genome_name + "_dbcan_clean.csv")
+    export_path = os.path.normpath(os.path.join(output_folder, genome_name) + "_dbcan_clean.csv")
     df_good_hits_clean_absolut.to_csv(export_path, sep= ",", index=False)
 
     #Turn the annotations into a list, to process for the counts file
@@ -353,4 +350,4 @@ counts_df.to_csv(cazymes_count_output, index_label="index")
 
 time_finished = time.time()
 
-print(f"{os.path.basename(__file__)} took {time_finished - time_start} seconds to run \n Thank you for using this script!! JFA")
+print(f"{os.path.basename(__file__)} took {time_finished - time_start} seconds to run")

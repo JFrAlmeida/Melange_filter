@@ -3,10 +3,12 @@ import os
 import time
 
 #Config imports
-from ..config import config_locals, annotation_columns_target, run_dbcan_parser
+from config import config_locals, run_dbcan_parser
 
 #Timer
 time_start = time.time()
+print(f"starting {os.path.basename(__file__)}...")
+
 
 #Run dbcan_parser
 if run_dbcan_parser:
@@ -61,7 +63,7 @@ all_cats =  [item
 #Runtime calculation
 time_finished = time.time()
 
-print(f"{os.path.basename(__file__)},  took , {time_finished - time_start},  seconds to run \n proceeding to config_checks")
+print(f"{os.path.basename(__file__)} took {time_finished - time_start} seconds to run")
 
 
 # print(cats_with_types)

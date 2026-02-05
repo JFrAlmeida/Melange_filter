@@ -4,8 +4,8 @@ import time
 import pandas as pd
 
 #import modules
-from ..config import annotation_columns_target, presence_counter_groups, path_main_melange
-from ..categories.category_checks import cats_with_stuff, cats_with_types, cats_with_names
+from config import annotation_columns_target, presence_counter_groups, path_main_melange
+from categories.category_checks import cats_with_stuff, cats_with_names
 
 #This script counts the hits per category (presence_counter_groups) in all genomes, uses
 # "All_Genomes_grouped_features.csv" as a base file

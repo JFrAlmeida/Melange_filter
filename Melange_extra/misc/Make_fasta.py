@@ -5,8 +5,8 @@ import pandas as pd
 import textwrap
 
 #my imports
-from ..config import name_change_condition, annotation_columns_target, make_fasta_groups, select_by_dna, path_main_melange
-from ..categories.category_checks import cats_with_stuff, cats_with_types, cats_with_names
+from config import annotation_columns_target, make_fasta_groups, select_by_dna, path_main_melange
+from categories.category_checks import cats_with_stuff, cats_with_names
 
 time_start = time.time()
 print(f"starting {os.path.basename(__file__)}...")

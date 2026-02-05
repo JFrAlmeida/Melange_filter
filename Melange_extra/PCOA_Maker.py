@@ -10,7 +10,8 @@ import matplotlib.patches as patches
 from statistics import SIMPER_func as smp
 
 #my imports
-from config import path_main_melange
+from config import path_main_melange, groups_file, colors_in_groupfile, pcoa_graph_format, pcoa_dpi
+from config import pcoa_distance_matrix_metric, names_in_graph
 
 
 #Warning, this file assumes you only have one colour annotation column, does not take more than that
@@ -18,14 +19,13 @@ from config import path_main_melange
 
 time_start = time.time()
 
+print(f"starting {os.path.basename(__file__)}...")
+
 #paths
 path_to_groupfile = os.path.normpath(os.path.join(path_main_melange, "Melange_extra/statistics/PCOA_group.csv"))
 counts_files_dir_path = os.path.normpath(os.path.join(path_main_melange, "Annotation_results"))
 counts_files_identifier = "_counts.csv" #termination of the counts files
 output = os.path.normpath(os.path.join(path_main_melange, "Outputs/Statistics"))
-
-#Color map palette
-palette = "tab10"
 
 #options for the graph
 PCOA_format = "svg"
@@ -39,7 +39,7 @@ names_in_graph = False #Whether to represent names of the genomes in the graph i
 ##################################################### Code below ######################################################
 
 #get the csv with the groups
-df_groups = pd.read_csv(path_to_groupfile, header=0, names=["Index","Groups"], index_col="Index")
+df_groups = pd.read_csv(path_to_groupfile, header=0, names=["Index","Groups","Color"], index_col="Index")
 
 
 #Make output if it doesn't exist
@@ -103,8 +103,46 @@ for file in os.listdir(counts_files_dir_path):
         codes = df_pcoa["Groups"].astype(
             "category").cat.codes  # gets the groups into a category and then into sequential integers
         # aka into (1,2,3,4) etc...
-        cmap = plt.get_cmap("tab10")
+
+        #Which color map to use, in relation to how many groups are in groups file ["Groups"]
+        if len(set(codes)) < 9:
+            cmap = plt.get_cmap("tab10")
+        elif len(set(codes)) <= 20:
+            cmap = plt.get_cmap("tab20")
+        else:
+            print("You have more than 20 groups in your PCOA, this script is built for max 20, please reduce the number!"
+                  "\n quitting...")
+            quit()
         colors = cmap(codes)  # makes a "tab10" color map for codes (above), now you can pass it to c= in ax.scatter
+
+"""
+Todo: 
+
+Make the colors a list and pass it to scatter like this:
+
+# Example: Mapping 3 points
+colors = ['magento', '#4287f5', 'teal']
+ax.scatter(df_pcoa["PC1"], df_pcoa["PC2"], c=colors)
+
+make a map for the legend?
+
+use pandas.DataFrame.drop_duplicates
+to get unique values for the groups colors
+
+# Define your palette
+color_map = {
+    'Control': 'skyblue',
+    'Treatment_A': '#FF5733',
+    'Treatment_B': 'forestgreen'
+}
+
+# Map the categories in your dataframe to the list of colors
+colors = df_pcoa['Group'].map(color_map)
+
+"""
+
+
+
 
         # Now a legend
         categories = df_pcoa["Groups"].astype("category").cat.categories

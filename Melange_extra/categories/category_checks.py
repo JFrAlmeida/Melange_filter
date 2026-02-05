@@ -3,8 +3,8 @@ import os
 import time
 
 #my imports
-from .category_processing import cats_with_stuff, cats_with_types, cats_with_names
-from ..config import annotation_columns_target
+from categories.category_processing import cats_with_stuff, cats_with_types, cats_with_names
+from config import annotation_columns_target
 
 time_start = time.time()
 

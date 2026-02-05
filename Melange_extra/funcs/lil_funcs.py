@@ -1,6 +1,4 @@
-import pandas
-
-
+from Bio import SeqIO
 
 #looks into a pandas df to find a column with the second parameter as name; prints "ITS HERE" if found
 def find_my_p_column(pandas_df, colname):
@@ -10,18 +8,18 @@ def find_my_p_column(pandas_df, colname):
     else:
         return False
 
-#increments a counter variable (needs to be set to 0) calculates percentage of progress
-def increment_counter ():
-    global counter
-    global counter_percent
-    counter = counter + 1
-    counter_percent = (counter / len(genome_path_list)) * 100
-    counter_percent = round(counter_percent, 2)
+#counter incrementation. eats a count and a total. count is the progress, how many things has a loop gone through, total
+# is the total of things that exists. returns (updated counter, percentage of progress) as a tuple.
+def increment_counter (count, total):
+    counter = count + 1
+    counter_percent = round((counter / total * 100), 2)
+    return (counter, counter_percent)
+
 
 #Function to extract sequences from FASTA files, returns a list of sequences found with the name seqs_id
 def extract_sequences(fasta_file, seqs_id):
     seq_dict = {record.id: str(record.seq) for record in SeqIO.parse(fasta_file, "fasta")}
-    return [seq_dict.get(seq_id) for seqs_id in seqs]  # Return sequence if ID exists
+    return [seq_dict.get(seq_id) for seq_id in seqs_id]  # Return sequence if ID exists
 
 #this uses pandas .str.contains() to check for a regex condition and returns a copy of the passed df selected by condition
 def pandas_rows_contains(pandas_df,column, condition):

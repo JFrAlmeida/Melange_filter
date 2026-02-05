@@ -4,7 +4,7 @@ import shutil
 import time
 
 #my imports
-from ..config import path_main_melange
+from config import path_main_melange
 
 time_start = time.time()
 print(f"starting {os.path.basename(__file__)}...")
@@ -27,9 +27,14 @@ else:
 
 #QA check
 if len(os.listdir(dbcan_folder_path)) != len(os.listdir(melange_ORF_path)):
+    print("dbcan_folder",os.listdir(dbcan_folder_path))
+    print("dbcan_folder", os.listdir(melange_ORF_path))
     print(f"it appears you have a different number of files in your Melange ORF folder -> {melange_ORF_path}"
           f"than in your dbcan folder -> {melange_ORF_path}; "
           f"\n sort them out then run again please!")
+    print(f"your dbcan folder path is: {dbcan_folder_path}")
+    print(f"your Melange ORF path is: {melange_ORF_path}")
+    print("quitting...")
     quit()
 
 #Loop goes through files in processed_dbcan

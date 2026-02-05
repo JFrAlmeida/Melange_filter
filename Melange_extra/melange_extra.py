@@ -2,7 +2,6 @@ import os
 import itertools as itool
 import pandas as pd
 import re
-from Bio import SeqIO
 import time
 import warnings
 from warnings import simplefilter
@@ -11,7 +10,7 @@ import logging
 
 #My module imports
 from config import name_change_condition, annotation_columns_target, run_make_fasta, run_dbcan_parser
-from config import run_presence_counter, run_stacked_bar_plot, path_main_melange
+from config import run_presence_counter, run_stacked_bar_plot, path_main_melange, pfam_topn_list
 from categories.category_checks import cats_with_stuff, cats_with_types
 from funcs.lil_funcs import increment_counter, extract_sequences
 
@@ -166,10 +165,12 @@ pfam_list_df["description"] = pfam_list_df["PFAM_ACC"].apply(lambda x: pfam_inde
 pfam_list_df = pfam_list_df.sort_values(by= ["PFAM_ACC"], ascending= True)
 
 #make a dictionary of Pfam number :  concatenation of the PFAM+descriptions, to substitue further down
-pfam_list_intermediate = pfam_list_df
-pfam_list_intermediate["pfam_desc"] = pfam_list_intermediate["PFAM_ACC"].astype(str) + ": " + pfam_list_intermediate["description"].astype(str)
+pfam_list_intermediate = pfam_list_df.copy()
+pfam_list_intermediate["pfam_desc"] = pfam_list_intermediate["description"].astype(str)
 pfam_list_desc = pfam_list_intermediate.loc[:,["PFAM_ACC", "pfam_desc"]]
-pfam_list_dict = dict(zip(pfam_list_desc["PFAM_ACC"], pfam_list_desc["pfam_desc"]))
+pfam_list_desc = pfam_list_desc.set_index("PFAM_ACC")
+#pfam_list_dict = dict(zip(pfam_list_desc.index, pfam_list_desc["pfam_desc"]))
+
 
 #Start processing genomes
 #Make some essential DFs, that need to be outside the loops
@@ -178,6 +179,8 @@ merged_df = pd.DataFrame()
 
 #Ignoring performance warning from Pandas, which does not appear do be relevant, but spit out anyways past some loops
 simplefilter(action="ignore", category=pd.errors.PerformanceWarning)
+
+total = len(genome_path_list)
 
 #Open genome and build the metainfo-table
 for genome_name in genome_path_list:
@@ -231,9 +234,11 @@ for genome_name in genome_path_list:
 
     #In case a dataframe is empty after the mask is applied, this skips the rest of the iteration
     if genome_selected.index.tolist() == []:
-        increment_counter()
-        counter_announcement = ("Finished genome " + str(counter) + " of " + str(len(genome_path_list)) +
-                                " (" + str(counter_percent) + "%) -> " + genome_name + " did not have any of the required cogs")
+        temp_count = increment_counter(counter, total)
+        counter = temp_count[0]
+        counter_percent = temp_count[1]
+        counter_announcement = (f"Finished genome {counter} of {total}, {counter_percent} % "
+                                f"\n-> {genome_name} did not have any of the required cogs")
         print(counter_announcement)
         continue
 
@@ -331,8 +336,10 @@ for genome_name in genome_path_list:
                                       index=True)
 
     #Icrement counter and announce genome finished!
-    increment_counter()
-    counter_announcement = (f"Finished genome {counter} of {len(genome_path_list)} ({counter_percent}%)")
+    temp_count = increment_counter(counter, total)
+    counter = temp_count[0]
+    counter_percent = temp_count[1]
+    counter_announcement = (f"Finished genome {counter} of {total} ({counter_percent}%)")
     print(counter_announcement)
 
 #sort the final PFAM table, and handle index
@@ -354,16 +361,33 @@ merged_df_untransposed.loc[: , "Total PFAMs per COG"] = merged_df_untransposed.i
 #Export general tables
 grouped_features_table.to_csv(path_genomes_grouped_features, index=False)
 merged_df_untransposed.to_csv(path_pfam_grouped_table, index=True)
+pfam_list_desc.to_csv(os.path.normpath(os.path.join(path_main_melange,"Outputs/PFAM_description.csv")), index= True)
 
+if pfam_topn_list:#make a list of the top N PFAMs in your dataset
+    only_pfam_counts = merged_df_untransposed.loc["Total sum of each PFAM"].to_list()
+    stand_in = merged_df_untransposed.columns.to_list()
+    data = [stand_in,only_pfam_counts]
+    only_pfam_counts = pd.DataFrame(data)
+    only_pfam_counts = only_pfam_counts.T
+    only_pfam_counts.columns = ["Pfams","counts"]
+    only_pfam_counts = only_pfam_counts.iloc[6:,:]
+    only_pfam_counts = only_pfam_counts.set_index("Pfams")
+    only_pfam_counts = only_pfam_counts.sort_values(by="counts", ascending= False, axis= 0)
+    only_pfam_counts = only_pfam_counts.drop(labels= "Total PFAMs per COG", axis= 0)
+
+    #Select pfams with n or over counts
+    only_pfam_counts = only_pfam_counts[only_pfam_counts["counts"] >= pfam_topn_list]
+    only_pfam_counts = only_pfam_counts.join(other= pfam_list_desc, how= "left") #match it with the PFAM description table
+    path_temp = os.path.normpath(os.path.join(path_main_melange, f"Outputs/PFAM_hits_over{pfam_topn_list}.csv"))
+    only_pfam_counts.to_csv(path_temp, index=True)
 
 #Scripts to run after this one is done
 if run_make_fasta:
-    from .misc import Make_fasta
+    from misc import Make_fasta
 if run_presence_counter:
-    from .statistics import presence_counter
+    from statistics import presence_counter
 if run_stacked_bar_plot:
-    from .statistics import Stacked_bar_plot
-
+    from statistics import Stacked_bar_plot
 
 #Emptu genomes warning
 if empty_genome_counter != 0:

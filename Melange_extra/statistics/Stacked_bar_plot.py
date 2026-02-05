@@ -6,18 +6,20 @@ import matplotlib.pyplot as plt
 from inspect import currentframe, getframeinfo
 
 #my imports
-from ..config import path_main_melange, stacked_order_color_file_name, stacked_graph_format, stacked_dpi, stacked_width
-from ..config import stacked_graph_title, stacked_graph_name_prefix, stacked_fontsize, stacked_fontstyle, stacked_ha
-from ..config import stacked_rotation
+from config import path_main_melange, stacked_order_color_file_name, stacked_graph_format, stacked_dpi, stacked_width
+from config import stacked_graph_title, stacked_graph_name_prefix, stacked_fontsize, stacked_fontstyle, stacked_ha
+from config import stacked_rotation
 
 time_start = time.time()
 
-print("Starting Stacked_bar_plot...")
+print(f"starting {os.path.basename(__file__)}...")
 
 #paths
-counts_files_path = os.path.normpath(os.path.join(path_main_melange, "Outputs/Statistics/Presence_counter.csv"))
+counts_files_path = os.path.normpath(os.path.join(path_main_melange, "Outputs/Statistics/presence_counter.csv"))
 index_tree_order = os.path.normpath(os.path.join(os.path.join(path_main_melange,"Melange_extra/statistics"), stacked_order_color_file_name))
 output = os.path.normpath(os.path.join(path_main_melange, "Outputs/Statistics"))
+
+
 
 #Make output if it doesn't exist
 if os.path.exists(output):
