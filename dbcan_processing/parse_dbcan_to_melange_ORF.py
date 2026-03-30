@@ -5,6 +5,7 @@ import time
 
 #my imports
 from config import path_main_melange
+import dbcan_processing.process_dbcan_results
 
 time_start = time.time()
 print(f"starting {os.path.basename(__file__)}...")

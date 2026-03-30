@@ -1,3 +1,5 @@
+import os
+import shutil
 from Bio import SeqIO
 
 #looks into a pandas df to find a column with the second parameter as name; prints "ITS HERE" if found
@@ -21,6 +23,11 @@ def extract_sequences(fasta_file, seqs_id):
     seq_dict = {record.id: str(record.seq) for record in SeqIO.parse(fasta_file, "fasta")}
     return [seq_dict.get(seq_id) for seq_id in seqs_id]  # Return sequence if ID exists
 
+##### Usage of extrac_sequences example:
+# genome_selected.loc[:, "dna_sequence"] = extract_sequences(ffn_path, genome_selected.loc[:, "prokka_features"])
+#       Where genome_selected is a pandas dataframe, and "prokka_feature" is a column containing the prokka number of
+#       features to pull the DNA sequences for; Works for amino acids and for anything that is text
+
 #this uses pandas .str.contains() to check for a regex condition and returns a copy of the passed df selected by condition
 def pandas_rows_contains(pandas_df,column, condition):
     finder = pandas_df[column].str.contains(condition, case=False, regex=True, na=False)
@@ -42,8 +49,9 @@ def Annotation_builder(dict, key, string, sep):
             string = string + sep + key
     return string
 
-##### Usage of extrac_sequences example:
-# genome_selected.loc[:, "dna_sequence"] = extract_sequences(ffn_path, genome_selected.loc[:, "prokka_features"])
-#       Where genome_selected is a pandas dataframe, and "prokka_feature" is a column containing the prokka number of
-#       features to pull the DNA sequences for; Works for amino acids and for anything that is text
-
+def make_or_rm_folder(path):
+    if os.path.exists(path):
+        shutil.rmtree(path)
+        os.makedirs(path)
+    else:
+        os.makedirs(path)

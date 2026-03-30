@@ -4,7 +4,7 @@ import time
 import pandas as pd
 
 #import modules
-from config import annotation_columns_target, presence_counter_groups, path_main_melange
+from config import annotation_columns_target, presence_counter_groups, path_main_melange, save_to_perm, statistics_prefix
 from categories.category_checks import cats_with_stuff, cats_with_names
 
 #This script counts the hits per category (presence_counter_groups) in all genomes, uses
@@ -16,6 +16,7 @@ print(f"starting {os.path.basename(__file__)}...")
 #Paths
 input = os.path.normpath(os.path.join(path_main_melange,"Outputs/All_Genomes_grouped_features.csv"))
 output = os.path.normpath(os.path.join(path_main_melange,"Outputs/Statistics/"))
+output_perm = os.path.normpath(os.path.join(path_main_melange,"Outputs/Stats_perm"))
 file_name = "presence_counter.csv"
 
 #make folders
@@ -109,6 +110,14 @@ df_toplevel.index = index_new
 
 #Export the table to output and filename
 df_toplevel.to_csv(os.path.normpath(os.path.join(output,file_name)),index=True, sep=",")
+
+#save to permanent storage in Outputs/Stats_perm
+if save_to_perm:
+    if not os.path.exists(output_perm):
+        os.mkdir(output_perm)
+    file_full_name = statistics_prefix + "_" + file_name
+    save_path = os.path.normpath(os.path.join(output_perm, file_full_name))
+    df_toplevel.to_csv(save_path, index=True, sep=",")
 
 time_finished = time.time()
 print(f"{os.path.basename(__file__)} took {time_finished - time_start} seconds to run")

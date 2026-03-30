@@ -7,7 +7,7 @@ from inspect import currentframe, getframeinfo
 
 #my imports
 from config import path_main_melange, stacked_order_color_file_name, stacked_graph_format, stacked_dpi, stacked_width
-from config import stacked_graph_title, stacked_graph_name_prefix, stacked_fontsize, stacked_fontstyle, stacked_ha
+from config import stacked_graph_title, statistics_prefix, stacked_fontsize, stacked_fontstyle, stacked_ha
 from config import stacked_rotation
 
 time_start = time.time()
@@ -16,7 +16,7 @@ print(f"starting {os.path.basename(__file__)}...")
 
 #paths
 counts_files_path = os.path.normpath(os.path.join(path_main_melange, "Outputs/Statistics/presence_counter.csv"))
-index_tree_order = os.path.normpath(os.path.join(os.path.join(path_main_melange,"Melange_extra/statistics"), stacked_order_color_file_name))
+index_tree_order = os.path.normpath(os.path.join(os.path.join(path_main_melange,"Melange_extra/MF_statistics"), stacked_order_color_file_name))
 output = os.path.normpath(os.path.join(path_main_melange, "Outputs/Statistics"))
 
 
@@ -41,6 +41,7 @@ try:
     df_reindexed = df.reindex(df_index.index)
 except:
     print("index_tree_order not set or column name not 'Tree_order', proceeding unordered")
+    df_reindexed = df_index
 
 height_dict = {}
 for column in df_reindexed.columns:
@@ -94,6 +95,7 @@ ax.set_xticks(ticks = labels_x,
               rotation = stacked_rotation)
 
 #set tick colors based on "Color" columns of tree_order.csv
+df_index["Color"] = df_index["Color"].fillna(value="#000000") #fill nan with black color hexadecimal
 if "Color" in df_index.columns:
     for tick_label, color in zip(ax.get_xticklabels(), df_index.Color):
         tick_label.set_color(color)
@@ -102,7 +104,7 @@ else:
 
 ax.set_title(stacked_graph_title)
 ax.legend(loc="upper right")
-fig.savefig(fname=os.path.normpath(os.path.join(output, f"{stacked_graph_name_prefix}_stacked_bar.{stacked_graph_format}")),
+fig.savefig(fname=os.path.normpath(os.path.join(output, f"{statistics_prefix}_stacked_bar.{stacked_graph_format}")),
             dpi=stacked_dpi,
             format=stacked_graph_format)
 

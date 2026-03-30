@@ -8,6 +8,7 @@ import pandas as pd
 from config import dbcan_name_change, path_main_melange
 from funcs.lil_funcs import Annotation_builder, pandas_rows_by_listofnumbers
 
+pd.options.display.max_columns = None
 
 #Timer
 time_start = time.time()

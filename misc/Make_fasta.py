@@ -46,7 +46,8 @@ for category in make_fasta_groups: #selects groups of categories
 
         #In case several cats end up with the same name
         while fasta_name in os.listdir(path_to_fasta):
-            fasta_name = fasta_name + "_1"
+            counter = 1
+            fasta_name = fasta_name + f"_{counter}"
 
         #Now make the file path for the fasta
         fasta_name = fasta_name + ".fasta"
@@ -67,7 +68,8 @@ for category in make_fasta_groups: #selects groups of categories
 
         #In case several cats end up with the same name
         while fasta_name in os.listdir(path_to_fasta):
-            fasta_name = fasta_name + "_1"
+            counter = 1
+            fasta_name = fasta_name + f"_{counter}"
 
         #Now make the file path for the fasta
         fasta_name = fasta_name + ".fasta"
@@ -76,7 +78,8 @@ for category in make_fasta_groups: #selects groups of categories
 
         # to hold all the annnotations
         all_annos = []
-        all_annos = all_annos + cats_with_stuff[cat]  # Running as intended
+        all_annos =  cats_with_stuff[category]  # Running as intended
+
 
 
     #now build the bool mask to select which sequences go into the fasta file
