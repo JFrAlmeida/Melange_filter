@@ -43,14 +43,13 @@ results to that folder
 git clone https://github.com/JFrAlmeida/Melange_filter.git
 
 conda env create -f environment.yml
+
 conda activate Melange_filter
 
 
 ### Bonus, combine with PCOA_maker
 
--> after activating the conda environment Melange_filter
-
-Additionally install the following
+-> after activating the conda environment Melange_filter,  install the following:
 ```
 conda install -c conda-forge scipy=1.10.1 scikit-bio=0.6.3
 ```
