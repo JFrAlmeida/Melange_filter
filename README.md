@@ -36,7 +36,7 @@ Requires two columns columns:
 
 ## Instalation
 
-Navigate in your terminal window to the folder you want to do you analysis in.
+Navigate in your terminal window to the folder you want to do your analysis in.
 Move the "Annotation results" and "Annotation" folders containing the Melange
 results to that folder
 ```
