@@ -14,7 +14,7 @@ from config import last_filter, last_filter_columns
 from categories.category_checks import cats_with_stuff, cats_with_types
 from funcs.lil_funcs import increment_counter, extract_sequences, make_or_rm_folder
 
-pd.set_option('display.max_columns', 500)
+# pd.set_option('display.max_columns', 500)
 
 #This Script takes in the Melange annotation (https://sandragodinhosilva.github.io/melange/) of any number of genomes,
 # selects only specific COGs, adds to it the dna and amino acid sequences corresponding to those COGs, and produces two tables,

@@ -33,6 +33,7 @@ else:
 
 #df with presence_counter.csv
 df = pd.read_csv(counts_files_path, index_col=0)
+index_present= True
 
 #Reindexes the barplot to match an order chosen by the user in tree_order.csv
 try:
@@ -41,7 +42,9 @@ try:
     df_reindexed = df.reindex(df_index.index)
 except:
     print("index_tree_order not set or column name not 'Tree_order', proceeding unordered")
-    df_reindexed = df_index
+    df_reindexed = df
+    index_present = False
+
 
 height_dict = {}
 for column in df_reindexed.columns:
@@ -94,11 +97,12 @@ ax.set_xticks(ticks = labels_x,
               ha = stacked_ha,
               rotation = stacked_rotation)
 
+if index_present:
 #set tick colors based on "Color" columns of tree_order.csv
-df_index["Color"] = df_index["Color"].fillna(value="#000000") #fill nan with black color hexadecimal
-if "Color" in df_index.columns:
-    for tick_label, color in zip(ax.get_xticklabels(), df_index.Color):
-        tick_label.set_color(color)
+    df_index["Color"] = df_index["Color"].fillna(value="#000000") #fill nan with black color hexadecimal
+    if "Color" in df_index.columns:
+        for tick_label, color in zip(ax.get_xticklabels(), df_index.Color):
+            tick_label.set_color(color)
 else:
     print("Color column not found in tree_order.csv, proceeding with uncoloured labels")
 

@@ -37,6 +37,7 @@ series_list = []
 #for name changing of the files:
 no_change = False
 
+#I dont think this condition actually does anything....
 try:
     if dbcan_name_change == "no_change":
         no_change = True # Name will not be changed
