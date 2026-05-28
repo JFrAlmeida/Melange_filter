@@ -1,7 +1,5 @@
 # Melange Filter
 
-Changed the Bio==version, just removed it, try
-
 ### A filtering tool for [Melange](https://github.com/sandragodinhosilva/melange)
 
 Melange Filter allows for the selection and filtering of specific annotations from previously calculated Melange results
