@@ -39,13 +39,13 @@ Requires two columns columns:
 Navigate in your terminal window to the folder you want to do you analysis in.
 Move the "Annotation results" and "Annotation" folders containing the Melange
 results to that folder
-
+```
 git clone https://github.com/JFrAlmeida/Melange_filter.git
 
 conda env create -f environment.yml
 
 conda activate Melange_filter
-
+```
 
 ### Bonus, combine with PCOA_maker
 
