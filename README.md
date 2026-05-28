@@ -1,5 +1,7 @@
 # Melange Filter
 
+Changed the Bio==version, just removed it, try
+
 ### A filtering tool for [Melange](https://github.com/sandragodinhosilva/melange)
 
 Melange Filter allows for the selection and filtering of specific annotations from previously calculated Melange results
@@ -41,10 +43,15 @@ Move the "Annotation results" and "Annotation" folders containing the Melange
 results to that folder
 ```
 git clone https://github.com/JFrAlmeida/Melange_filter.git
-
+cd Melange_filter
 conda env create -f environment.yml
 
 conda activate Melange_filter
+```
+
+### Usage
+```
+python melange_filter.py
 ```
 
 ### Bonus, combine with PCOA_maker
@@ -60,20 +67,7 @@ and run PCOA_maker (after checking instructions there) with
 python PCOA_Maker.py
 ```
 
-conda create -n melangextra
-conda activate melangextra
-conda install -c conda-forge python=3.13.9 
-conda install -c conda-forge pandas
 
-
-
-
-pip install biopython==1.86
-
----USAGE---
-
-```
-python Melange_filter.py
-```
+Hope the scripts are useful for you!! - JFA
 
 
