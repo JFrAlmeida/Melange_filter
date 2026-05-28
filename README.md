@@ -3,15 +3,17 @@
 ### A filtering tool for [Melange](https://github.com/sandragodinhosilva/melange)
 
 Melange Filter allows for the selection and filtering of specific annotations from previously calculated Melange results
+It does not modify your Melange results
 
-!! It does NOT modify your Melange results!!
+if you want to calculate PCOAs from Melange results check [PCOA_maker](https://github.com/JFrAlmeida/PCOA_maker.git)
+It can be run in the conda environment generated with this tool with small additions (check Instalation)
 
 ### Provides:
 - Single table output of selected features, with DNA and amino acid sequences for each feature
 - Addition of external dbcan results and merging into the Melange results
 - DNA or amino acid Fasta files of the selected features
 - Stacked bar plots of user defined groups of annotations (e.g. endochitinases vs exochitinases vs LPMOs etc.)
-- Calculates PCOAs with minimal user inputs
+
 
 ### Files you should interact with
 There are 2 files you should interact with to get full use of this:
@@ -27,11 +29,9 @@ Optional metadata file.
 Allows setting the order of the stacked bar plot, and setting the color for each label
 
 Requires two columns columns:
-    Tree_order:
-        Controls sample order in the figure.
+    Tree_order: Controls sample order in the figure.
 
-    Color:
-        Controls label colors.
+    Color: Controls label colors.
 
 
 ## Instalation
@@ -46,10 +46,20 @@ conda env create -f environment.yml
 conda activate Melange_filter
 
 
+### Bonus, combine with PCOA_maker
 
+-> after activating the conda environment Melange_filter
 
+Additionally install the following
+```
+conda install -c conda-forge scipy=1.10.1 scikit-bio=0.6.3
+```
+git clone https://github.com/JFrAlmeida/PCOA_maker.git
 
-
+and run PCOA_maker (after checking instructions there) with
+```
+python PCOA_Maker.py
+```
 
 conda create -n melangextra
 conda activate melangextra
