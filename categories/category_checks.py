@@ -50,10 +50,12 @@ elif len(cats_with_names) > len(cats_with_stuff):
 
 
 
-#this large block check if the categories were inserted correctly or not. It iterates through the total of annotations
+#this large block checks if the categories were inserted correctly or not. It iterates through the total of annotations
 # requested, and additional cazymes columns
 
 #Need to make one for CAZy and the others
+#Dont forget the missing checks, or abandon checks and trust in god and user
+
 for item in annotation_columns_target:
     if annotation_columns_target == "COG":
         for key in cats_with_stuff.keys():
